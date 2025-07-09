@@ -1,0 +1,16 @@
+server:
+  port: 8089
+spring:
+  freemarker:
+    cache: false
+    charset: utf-8
+    expose-request-attributes: true
+    expose-session-attributes: true
+    suffix: .ftl
+    template-loader-path: classpath:/webapp/
+  redis:
+    host: 192.168.6.249
+    port: 6379
+    password: ZgW@nKWXTwnqeFWFuZ
+    database: 6
+

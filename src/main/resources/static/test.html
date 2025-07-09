@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>限流功能测试</title>
+    <link href="/css/ratelimit.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>限流功能测试</h1>
+            <nav class="nav">
+                <a href="/ratelimit/" class="nav-link">返回管理页面</a>
+            </nav>
+        </header>
+
+        <main class="main">
+            <div class="section">
+                <h2>测试接口</h2>
+                <div class="test-area">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="testUrl">测试URL</label>
+                            <select id="testUrl">
+                                <option value="/test/get">GET /test/get</option>
+                                <option value="/test/post">POST /test/post</option>
+                                <option value="/test/api/data">GET /test/api/data</option>
+                                <option value="/test/user/123">GET /test/user/123</option>
+                                <option value="/test/high-frequency">GET /test/high-frequency</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="testIp">模拟IP</label>
+                            <input type="text" id="testIp" value="192.168.1.100" placeholder="IP地址">
+                        </div>
+                        <div class="form-group">
+                            <label for="testUserId">用户ID</label>
+                            <input type="text" id="testUserId" value="user123" placeholder="用户ID">
+                        </div>
+                        <div class="form-group">
+                            <label for="requestCount">请求次数</label>
+                            <input type="number" id="requestCount" value="10" min="1" max="100">
+                        </div>
+                        <div class="form-group">
+                            <label for="requestInterval">请求间隔(ms)</label>
+                            <input type="number" id="requestInterval" value="100" min="0" max="5000">
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button class="btn btn-primary" onclick="sendSingleRequest()">发送单个请求</button>
+                        <button class="btn btn-warning" onclick="sendBatchRequests()">批量请求测试</button>
+                        <button class="btn btn-info" onclick="sendConcurrentRequests()">并发请求测试</button>
+                        <button class="btn btn-secondary" onclick="clearResults()">清空结果</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>测试结果</h2>
+                <div id="testResults" class="test-results">
+                    <div class="no-data">暂无测试结果</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>统计信息</h2>
+                <div id="testStats" class="stats-cards">
+                    <div class="card">
+                        <h3>总请求数</h3>
+                        <div class="stat-value" id="totalRequests">0</div>
+                    </div>
+                    <div class="card">
+                        <h3>成功请求</h3>
+                        <div class="stat-value success" id="successRequests">0</div>
+                    </div>
+                    <div class="card">
+                        <h3>被限流</h3>
+                        <div class="stat-value danger" id="blockedRequests">0</div>
+                    </div>
+                    <div class="card">
+                        <h3>错误请求</h3>
+                        <div class="stat-value warning" id="errorRequests">0</div>
+                    </div>
+                    <div class="card">
+                        <h3>成功率</h3>
+                        <div class="stat-value" id="successRate">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>预设测试场景</h2>
+                <div class="scenario-buttons">
+                    <button class="btn btn-info" onclick="testScenario('normal')">正常访问测试</button>
+                    <button class="btn btn-warning" onclick="testScenario('burst')">突发流量测试</button>
+                    <button class="btn btn-danger" onclick="testScenario('attack')">攻击模拟测试</button>
+                    <button class="btn btn-secondary" onclick="testScenario('multiuser')">多用户测试</button>
+                </div>
+                <div id="scenarioDescription" class="scenario-description">
+                    <p>选择一个测试场景来验证限流功能的效果。</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let testStats = {
+            total: 0,
+            success: 0,
+            blocked: 0,
+            error: 0
+        };
+
+        function updateStats() {
+            document.getElementById('totalRequests').textContent = testStats.total;
+            document.getElementById('successRequests').textContent = testStats.success;
+            document.getElementById('blockedRequests').textContent = testStats.blocked;
+            document.getElementById('errorRequests').textContent = testStats.error;
+            
+            const successRate = testStats.total > 0 ? (testStats.success / testStats.total * 100).toFixed(1) : 0;
+            document.getElementById('successRate').textContent = successRate + '%';
+        }
+
+        function addResult(result) {
+            const resultsContainer = document.getElementById('testResults');
+            if (resultsContainer.querySelector('.no-data')) {
+                resultsContainer.innerHTML = '';
+            }
+
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${result.success ? 'success' : result.blocked ? 'blocked' : 'error'}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            resultDiv.innerHTML = `
+                <div class="result-header">
+                    <span class="result-time">${timestamp}</span>
+                    <span class="result-status">${result.success ? '✅ 成功' : result.blocked ? '🚫 被限流' : '❌ 错误'}</span>
+                </div>
+                <div class="result-details">
+                    <div><strong>URL:</strong> ${result.url}</div>
+                    <div><strong>状态码:</strong> ${result.status}</div>
+                    ${result.ip ? `<div><strong>IP:</strong> ${result.ip}</div>` : ''}
+                    ${result.userId ? `<div><strong>用户ID:</strong> ${result.userId}</div>` : ''}
+                    <div><strong>响应:</strong> <pre>${JSON.stringify(result.data, null, 2)}</pre></div>
+                </div>
+            `;
+            
+            resultsContainer.insertBefore(resultDiv, resultsContainer.firstChild);
+            
+            // 限制显示的结果数量
+            const results = resultsContainer.querySelectorAll('.test-result');
+            if (results.length > 20) {
+                results[results.length - 1].remove();
+            }
+        }
+
+        function sendSingleRequest() {
+            const url = document.getElementById('testUrl').value;
+            const ip = document.getElementById('testIp').value;
+            const userId = document.getElementById('testUserId').value;
+
+            sendRequest(url, ip, userId);
+        }
+
+        function sendRequest(url, ip, userId) {
+            const headers = {};
+            if (ip) headers['X-Forwarded-For'] = ip;
+            if (userId) headers['X-User-Id'] = userId;
+
+            const params = new URLSearchParams();
+            if (userId) params.append('userId', userId);
+
+            const fullUrl = url + (params.toString() ? '?' + params.toString() : '');
+
+            testStats.total++;
+
+            axios.get(fullUrl, { headers })
+                .then(response => {
+                    testStats.success++;
+                    addResult({
+                        success: true,
+                        blocked: false,
+                        url: fullUrl,
+                        status: response.status,
+                        ip: ip,
+                        userId: userId,
+                        data: response.data
+                    });
+                })
+                .catch(error => {
+                    if (error.response && error.response.status === 429) {
+                        testStats.blocked++;
+                        addResult({
+                            success: false,
+                            blocked: true,
+                            url: fullUrl,
+                            status: error.response.status,
+                            ip: ip,
+                            userId: userId,
+                            data: error.response.data
+                        });
+                    } else {
+                        testStats.error++;
+                        addResult({
+                            success: false,
+                            blocked: false,
+                            url: fullUrl,
+                            status: error.response ? error.response.status : 0,
+                            ip: ip,
+                            userId: userId,
+                            data: { message: error.message }
+                        });
+                    }
+                })
+                .finally(() => {
+                    updateStats();
+                });
+        }
+
+        function sendBatchRequests() {
+            const url = document.getElementById('testUrl').value;
+            const ip = document.getElementById('testIp').value;
+            const userId = document.getElementById('testUserId').value;
+            const count = parseInt(document.getElementById('requestCount').value);
+            const interval = parseInt(document.getElementById('requestInterval').value);
+
+            let sent = 0;
+            const sendNext = () => {
+                if (sent < count) {
+                    sendRequest(url, ip, userId);
+                    sent++;
+                    setTimeout(sendNext, interval);
+                }
+            };
+
+            sendNext();
+        }
+
+        function sendConcurrentRequests() {
+            const url = document.getElementById('testUrl').value;
+            const ip = document.getElementById('testIp').value;
+            const userId = document.getElementById('testUserId').value;
+            const count = parseInt(document.getElementById('requestCount').value);
+
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    sendRequest(url, ip, userId);
+                }, i * 10); // 10ms间隔发送，模拟并发
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '<div class="no-data">暂无测试结果</div>';
+            testStats = { total: 0, success: 0, blocked: 0, error: 0 };
+            updateStats();
+        }
+
+        function testScenario(scenario) {
+            const descriptions = {
+                normal: '正常访问测试：模拟正常用户的访问模式，每秒1-2个请求',
+                burst: '突发流量测试：短时间内发送大量请求，测试令牌桶的突发处理能力',
+                attack: '攻击模拟测试：高频率持续请求，测试限流保护效果',
+                multiuser: '多用户测试：模拟多个不同用户同时访问'
+            };
+
+            document.getElementById('scenarioDescription').innerHTML = `<p><strong>${descriptions[scenario]}</strong></p>`;
+
+            switch (scenario) {
+                case 'normal':
+                    runNormalTest();
+                    break;
+                case 'burst':
+                    runBurstTest();
+                    break;
+                case 'attack':
+                    runAttackTest();
+                    break;
+                case 'multiuser':
+                    runMultiUserTest();
+                    break;
+            }
+        }
+
+        function runNormalTest() {
+            const url = '/test/api/data';
+            const ip = '192.168.1.100';
+            const userId = 'user123';
+
+            // 每秒发送1-2个请求，持续10秒
+            for (let i = 0; i < 15; i++) {
+                setTimeout(() => {
+                    sendRequest(url, ip, userId);
+                }, i * 1000 + Math.random() * 500);
+            }
+        }
+
+        function runBurstTest() {
+            const url = '/test/high-frequency';
+            const ip = '192.168.1.101';
+            const userId = 'user456';
+
+            // 前3秒快速发送20个请求，然后正常发送
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    sendRequest(url, ip, userId);
+                }, i * 150);
+            }
+
+            // 5秒后继续正常发送
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    sendRequest(url, ip, userId);
+                }, 5000 + i * 1000);
+            }
+        }
+
+        function runAttackTest() {
+            const url = '/test/api/data';
+            const ip = '192.168.1.102';
+            const userId = 'attacker';
+
+            // 每100ms发送一个请求，持续10秒
+            for (let i = 0; i < 100; i++) {
+                setTimeout(() => {
+                    sendRequest(url, ip, userId);
+                }, i * 100);
+            }
+        }
+
+        function runMultiUserTest() {
+            const url = '/test/user/';
+            const baseIp = '192.168.1.';
+            const users = ['user1', 'user2', 'user3', 'user4', 'user5'];
+
+            users.forEach((userId, userIndex) => {
+                const ip = baseIp + (110 + userIndex);
+                const userUrl = url + userId;
+
+                // 每个用户发送10个请求
+                for (let i = 0; i < 10; i++) {
+                    setTimeout(() => {
+                        sendRequest(userUrl, ip, userId);
+                    }, (userIndex * 2000) + (i * 500));
+                }
+            });
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats();
+        });
+    </script>
+
+    <style>
+        .test-results {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+        }
+
+        .test-result {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 4px;
+            border-left: 4px solid #dee2e6;
+        }
+
+        .test-result.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+
+        .test-result.blocked {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+
+        .test-result.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .result-time {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .result-details {
+            font-size: 0.9rem;
+        }
+
+        .result-details div {
+            margin-bottom: 0.25rem;
+        }
+
+        .result-details pre {
+            background: rgba(0,0,0,0.05);
+            padding: 0.5rem;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            margin: 0.5rem 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .scenario-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .scenario-description {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+    </style>
+</body>
+</html>
