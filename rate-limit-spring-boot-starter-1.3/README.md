@@ -10,16 +10,81 @@
 - **HTTP方法过滤**: 可选择性地对特定HTTP方法进行限流
 - **自动配置**: 开箱即用的Spring Boot自动配置
 - **统计功能**: 提供详细的限流统计信息
+- **版本兼容**: 支持SpringBoot 2.0+版本，自动检测版本兼容性
+
+## 版本兼容性
+
+| SpringBoot版本 | 兼容性 | 说明 | 推荐使用版本 |
+|--------------|------|------|------------|
+| 1.3.x        | ⚠️ 有限支持 | 基本功能可用 | 1.0.0-springboot-1-3-8 |
+| 1.5.x        | ⚠️ 有限支持 | 基本功能可用 | 1.0.0-springboot-1-5-22 |
+| 2.0.x - 2.3.x | ✅ 完全兼容 | 推荐版本 | 1.0.0-springboot-2-0-9 |
+| 2.4.x - 2.6.x | ✅ 完全兼容 | 推荐版本 | 1.0.0-springboot-2-6-13 |
+| 2.7.x        | ✅ 完全兼容 | 推荐版本 | 1.0.0-springboot-2-7-8 |
+| 3.0.x+       | ⚠️ 部分兼容 | 需要Java 17+ | 1.0.0（通用版本） |
+
+详细的版本兼容性信息请参考 [VERSION_COMPATIBILITY.md](VERSION_COMPATIBILITY.md)
 
 ## 快速开始
 
 ### 1. 添加依赖
 
+根据您的SpringBoot版本选择对应的starter版本：
+
+#### SpringBoot 2.6.x 项目（推荐）
+```xml
+<dependency>
+    <groupId>com.marry</groupId>
+    <artifactId>rate-limit-spring-boot-starter</artifactId>
+    <version>1.0.0-springboot-2-6-13</version>
+</dependency>
+```
+
+#### SpringBoot 2.7.x 项目
+```xml
+<dependency>
+    <groupId>com.marry</groupId>
+    <artifactId>rate-limit-spring-boot-starter</artifactId>
+    <version>1.0.0-springboot-2-7-8</version>
+</dependency>
+```
+
+#### SpringBoot 1.3.x 项目（老版本）
+```xml
+<dependency>
+    <groupId>com.marry</groupId>
+    <artifactId>rate-limit-spring-boot-starter</artifactId>
+    <version>1.0.0-springboot-1-3-8</version>
+</dependency>
+```
+
+#### 通用版本（兼容性最好）
 ```xml
 <dependency>
     <groupId>com.marry</groupId>
     <artifactId>rate-limit-spring-boot-starter</artifactId>
     <version>1.0.0</version>
+</dependency>
+```
+
+**版本选择建议**:
+- 优先使用与您SpringBoot版本匹配的专用版本
+- 如果没有匹配的版本，使用通用版本（1.0.0）
+- 通用版本使用provided依赖，兼容性最好但需要项目提供相关依赖
+
+**注意**: 如果遇到依赖冲突，可以排除冲突的依赖：
+
+```xml
+<dependency>
+    <groupId>com.marry</groupId>
+    <artifactId>rate-limit-spring-boot-starter</artifactId>
+    <version>1.0.0-springboot-2-6-13</version>
+    <exclusions>
+        <exclusion>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </exclusion>
+    </exclusions>
 </dependency>
 ```
 

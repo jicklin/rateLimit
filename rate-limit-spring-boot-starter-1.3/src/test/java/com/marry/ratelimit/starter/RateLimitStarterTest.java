@@ -2,11 +2,8 @@ package com.marry.ratelimit.starter;
 
 import com.marry.ratelimit.starter.model.HttpMethod;
 import com.marry.ratelimit.starter.model.RateLimitRule;
-import com.marry.ratelimit.starter.service.RateLimitConfigService;
-import com.marry.ratelimit.starter.service.RateLimitService;
 import com.marry.ratelimit.starter.util.AntPathMatcher;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.util.Arrays;
