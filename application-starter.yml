@@ -1,0 +1,58 @@
+# 使用限流starter的配置示例
+spring:
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
+
+# 限流配置
+rate-limit:
+  enabled: true
+  redis-key-prefix: rate_limit
+  default-bucket-capacity: 10
+  default-refill-rate: 5
+  default-time-window: 1
+  
+  # 拦截器配置
+  interceptor:
+    enabled: true
+    path-patterns:
+      - "/**"
+    exclude-path-patterns:
+      - "/ratelimit/**"  # 排除限流管理页面
+      - "/static/**"     # 排除静态资源
+      - "/css/**"        # 排除CSS文件
+      - "/js/**"         # 排除JS文件
+      - "/images/**"     # 排除图片文件
+      - "/favicon.ico"   # 排除图标文件
+    order: 0
+  
+  # 统计配置
+  stats:
+    enabled: true
+    retention-hours: 24
+    realtime-window-minutes: 15
+  
+  # 管理界面配置（如果需要）
+  admin:
+    enabled: false
+    path-prefix: "/ratelimit"
+
+# 服务器配置
+server:
+  port: 8080
+
+# 日志配置
+logging:
+  level:
+    com.marry.ratelimit: INFO
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
