@@ -1,11 +1,13 @@
 package com.marry.ratelimit.starter.autoconfigure;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.marry.ratelimit.starter.interceptor.RateLimitInterceptor;
 import com.marry.ratelimit.starter.service.RateLimitConfigService;
 import com.marry.ratelimit.starter.service.RateLimitService;
@@ -19,7 +21,6 @@ import com.marry.ratelimit.starter.strategy.impl.IpRateLimitStrategy;
 import com.marry.ratelimit.starter.strategy.impl.PathRateLimitStrategy;
 import com.marry.ratelimit.starter.strategy.impl.UserRateLimitStrategy;
 import com.marry.ratelimit.starter.util.SpringBootVersionChecker;
-import com.marry.ratelimit.starter.util.SpringBootVersionChecker.CompatibilityLevel;
 import com.marry.ratelimit.starter.util.RedisKeyGenerator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -82,19 +83,23 @@ public class RateLimitAutoConfiguration {
     }
 
     private ObjectMapper createObjectMapper() {
+
         ObjectMapper om = new ObjectMapper();
+        om.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        om.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, false);
+        om.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         om.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
-        om.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-        om.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        om.registerModule(new JavaTimeModule());
+        om.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+
         return om;
     }
 
     /**
      * 路径限流策略
      */
-    @Bean("starterPathRateLimitStrategy")
-    @ConditionalOnMissingBean(name = {"pathRateLimitStrategy", "starterPathRateLimitStrategy"})
+    @Bean
+    @ConditionalOnMissingBean
     public PathRateLimitStrategy pathRateLimitStrategy() {
         return new PathRateLimitStrategy();
     }
@@ -102,8 +107,8 @@ public class RateLimitAutoConfiguration {
     /**
      * IP限流策略
      */
-    @Bean("starterIpRateLimitStrategy")
-    @ConditionalOnMissingBean(name = {"ipRateLimitStrategy", "starterIpRateLimitStrategy"})
+    @Bean
+    @ConditionalOnMissingBean
     public IpRateLimitStrategy ipRateLimitStrategy() {
         return new IpRateLimitStrategy();
     }
@@ -111,8 +116,8 @@ public class RateLimitAutoConfiguration {
     /**
      * 用户限流策略
      */
-    @Bean("starterUserRateLimitStrategy")
-    @ConditionalOnMissingBean(name = {"userRateLimitStrategy", "starterUserRateLimitStrategy"})
+    @Bean
+    @ConditionalOnMissingBean
     public UserRateLimitStrategy userRateLimitStrategy() {
         return new UserRateLimitStrategy();
     }
