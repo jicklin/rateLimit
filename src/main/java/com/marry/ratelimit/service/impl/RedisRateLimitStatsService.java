@@ -40,12 +40,15 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
     @Autowired
     private UserRateLimitStrategy userStrategy;
 
+    @Autowired
+    private RedisKeyGenerator redisKeyGenerator;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public void recordRequest(String ruleId, boolean allowed) {
         try {
-            String statsKey = RedisKeyGenerator.generateStatsKey(ruleId);
+            String statsKey = redisKeyGenerator.generateStatsKey(ruleId);
 
             // 增加总请求数
             redisTemplate.opsForHash().increment(statsKey, "totalRequests", 1);
@@ -111,7 +114,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
     @Override
     public RateLimitStats getStats(String ruleId) {
         try {
-            String statsKey = RedisKeyGenerator.generateStatsKey(ruleId);
+            String statsKey = redisKeyGenerator.generateStatsKey(ruleId);
             Map<Object, Object> statsData = redisTemplate.opsForHash().entries(statsKey);
 
             if (statsData.isEmpty()) {
@@ -166,17 +169,17 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
     @Override
     public void resetStats(String ruleId) {
         try {
-            String statsKey = RedisKeyGenerator.generateStatsKey(ruleId);
+            String statsKey = redisKeyGenerator.generateStatsKey(ruleId);
             redisTemplate.delete(statsKey);
 
             // 删除实时统计数据
-            redisTemplate.delete(redisTemplate.keys("rate_limit:realtime:" + ruleId + ":*"));
+            redisTemplate.delete(redisTemplate.keys(redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:realtime:" + ruleId + ":*"));
 
             // 删除详细统计数据（IP和用户维度）
-            redisTemplate.delete(redisTemplate.keys("rate_limit:detailed_stats:" + ruleId + ":*"));
+            redisTemplate.delete(redisTemplate.keys(redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:detailed_stats:" + ruleId + ":*"));
 
             // 删除维度列表数据
-            redisTemplate.delete(redisTemplate.keys("rate_limit:dimension_list:" + ruleId + ":*"));
+            redisTemplate.delete(redisTemplate.keys(redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:dimension_list:" + ruleId + ":*"));
 
             logger.info("重置统计信息: {}", ruleId);
         } catch (Exception e) {
@@ -188,10 +191,10 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
     public void resetAllStats() {
         try {
             // 删除所有统计数据
-            redisTemplate.delete(redisTemplate.keys("rate_limit:stats:*"));
-            redisTemplate.delete(redisTemplate.keys("rate_limit:realtime:*"));
-            redisTemplate.delete(redisTemplate.keys("rate_limit:detailed_stats:*"));
-            redisTemplate.delete(redisTemplate.keys("rate_limit:dimension_list:*"));
+            redisTemplate.delete(redisTemplate.keys(redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:stats:*"));
+            redisTemplate.delete(redisTemplate.keys(redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:realtime:*"));
+            redisTemplate.delete(redisTemplate.keys(redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:detailed_stats:*"));
+            redisTemplate.delete(redisTemplate.keys(redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:dimension_list:*"));
 
             logger.info("重置所有统计信息");
         } catch (Exception e) {
@@ -243,7 +246,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
             long startTime = endTime - (minutes * 60 * 1000L);
 
             // 获取时间范围内的统计数据
-            String pattern = "rate_limit:realtime:" + ruleId + ":*";
+            String pattern = redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:realtime:" + ruleId + ":*";
             for (String key : redisTemplate.keys(pattern)) {
                 try {
                     String[] parts = key.split(":");
@@ -277,7 +280,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
      */
     private void recordDetailedStats(String ruleId, String dimension, String dimensionValue, boolean allowed) {
         try {
-            String detailedStatsKey = RedisKeyGenerator.generateDetailedStatsKey(ruleId, dimension, dimensionValue);
+            String detailedStatsKey = redisKeyGenerator.generateDetailedStatsKey(ruleId, dimension, dimensionValue);
 
             // 增加总请求数
             redisTemplate.opsForHash().increment(detailedStatsKey, "totalRequests", 1);
@@ -297,7 +300,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
             redisTemplate.expire(detailedStatsKey, 7, TimeUnit.DAYS);
 
             // 将维度值添加到维度列表中（用于后续查询）
-            String dimensionListKey = RedisKeyGenerator.generateDimensionListKey(ruleId, dimension);
+            String dimensionListKey = redisKeyGenerator.generateDimensionListKey(ruleId, dimension);
             redisTemplate.opsForZSet().incrementScore(dimensionListKey, dimensionValue, 1);
             redisTemplate.expire(dimensionListKey, 7, TimeUnit.DAYS);
 
@@ -369,13 +372,13 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
             String ruleName = rule != null ? rule.getName() : "未知规则";
 
             // 获取维度列表（按请求数排序）
-            String dimensionListKey = RedisKeyGenerator.generateDimensionListKey(ruleId, dimension);
+            String dimensionListKey = redisKeyGenerator.generateDimensionListKey(ruleId, dimension);
             Set<Object> dimensionValues = redisTemplate.opsForZSet().reverseRange(dimensionListKey, 0, limit - 1);
 
             if (dimensionValues != null) {
                 for (Object dimensionValue : dimensionValues) {
                     String value = dimensionValue.toString();
-                    String detailedStatsKey = RedisKeyGenerator.generateDetailedStatsKey(ruleId, dimension, value);
+                    String detailedStatsKey = redisKeyGenerator.generateDetailedStatsKey(ruleId, dimension, value);
                     Map<Object, Object> statsData = redisTemplate.opsForHash().entries(detailedStatsKey);
 
                     if (!statsData.isEmpty()) {
@@ -508,7 +511,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
                     if (intervalMinutes == 1) {
                         // 分钟级别：直接查询对应分钟的数据
                         long timeMinute = timePoint / (60 * 1000) * (60 * 1000);
-                        String realtimeKey = "rate_limit:realtime:" + rule.getId() + ":" + timeMinute;
+                        String realtimeKey = redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:realtime:" + rule.getId() + ":" + timeMinute;
 
                         Map<Object, Object> data = redisTemplate.opsForHash().entries(realtimeKey);
                         if (!data.isEmpty()) {
@@ -520,7 +523,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
                         for (int j = 0; j < intervalMinutes; j++) {
                             long minuteTime = timePoint + (j * 60 * 1000);
                             long timeMinute = minuteTime / (60 * 1000) * (60 * 1000);
-                            String realtimeKey = "rate_limit:realtime:" + rule.getId() + ":" + timeMinute;
+                            String realtimeKey = redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:realtime:" + rule.getId() + ":" + timeMinute;
 
                             Map<Object, Object> data = redisTemplate.opsForHash().entries(realtimeKey);
                             if (!data.isEmpty()) {
@@ -608,7 +611,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
                 if (intervalMinutes == 1) {
                     // 分钟级别：直接查询对应分钟的数据
                     long timeMinute = timePoint / (60 * 1000) * (60 * 1000);
-                    String realtimeKey = "rate_limit:realtime:" + ruleId + ":" + timeMinute;
+                    String realtimeKey = redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:realtime:" + ruleId + ":" + timeMinute;
 
                     Map<Object, Object> data = redisTemplate.opsForHash().entries(realtimeKey);
                     if (!data.isEmpty()) {
@@ -620,7 +623,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
                     for (int j = 0; j < intervalMinutes; j++) {
                         long minuteTime = timePoint + (j * 60 * 1000);
                         long timeMinute = minuteTime / (60 * 1000) * (60 * 1000);
-                        String realtimeKey = "rate_limit:realtime:" + ruleId + ":" + timeMinute;
+                        String realtimeKey = redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:realtime:" + ruleId + ":" + timeMinute;
 
                         Map<Object, Object> data = redisTemplate.opsForHash().entries(realtimeKey);
                         if (!data.isEmpty()) {
@@ -660,13 +663,13 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
             long endTime = System.currentTimeMillis();
             long startTime = endTime - (minutes * 60 * 1000L);
 
-            String globalTimeIndexKey = "rate_limit:global_time_index";
+            String globalTimeIndexKey =redisKeyGenerator.generateGlobalTimeIndexKey();
             Set<Object> recordIds = redisTemplate.opsForZSet().reverseRangeByScore(globalTimeIndexKey, startTime, endTime, 0, limit);
 
             if (recordIds != null) {
                 for (Object recordId : recordIds) {
                     // 需要找到对应的规则ID
-                    Set<String> keys = redisTemplate.keys("rate_limit:records:*:" + recordId.toString());
+                    Set<String> keys = redisTemplate.keys(redisKeyGenerator.getRedisKeyPrefix() + ":" + "rate_limit:records:*:" + recordId.toString());
                     for (String key : keys) {
                         String recordJson = (String) redisTemplate.opsForValue().get(key);
                         if (recordJson != null) {

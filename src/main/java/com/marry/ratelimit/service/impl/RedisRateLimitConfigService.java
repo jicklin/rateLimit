@@ -25,6 +25,9 @@ public class RedisRateLimitConfigService implements RateLimitConfigService {
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
+    @Autowired
+    private RedisKeyGenerator redisKeyGenerator;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -37,12 +40,12 @@ public class RedisRateLimitConfigService implements RateLimitConfigService {
             rule.setUpdateTime(System.currentTimeMillis());
 
             // 保存规则到Redis
-            String ruleKey = RedisKeyGenerator.generateRuleConfigKey(rule.getId());
+            String ruleKey = redisKeyGenerator.generateRuleConfigKey(rule.getId());
             String ruleJson = objectMapper.writeValueAsString(rule);
             redisTemplate.opsForValue().set(ruleKey, ruleJson);
 
             // 添加到规则列表
-            redisTemplate.opsForSet().add(RedisKeyGenerator.RULE_LIST_KEY, rule.getId());
+            redisTemplate.opsForSet().add(redisKeyGenerator.generateKey(RedisKeyGenerator.RULE_LIST_KEY), rule.getId());
 
             logger.info("保存限流规则: {}", rule.getName());
             return rule;
@@ -55,7 +58,7 @@ public class RedisRateLimitConfigService implements RateLimitConfigService {
     @Override
     public RateLimitRule getRule(String ruleId) {
         try {
-            String ruleKey = RedisKeyGenerator.generateRuleConfigKey(ruleId);
+            String ruleKey = redisKeyGenerator.generateRuleConfigKey(ruleId);
             String ruleJson = (String) redisTemplate.opsForValue().get(ruleKey);
 
             if (ruleJson != null) {
@@ -75,7 +78,7 @@ public class RedisRateLimitConfigService implements RateLimitConfigService {
             List<RateLimitRule> rules = new ArrayList<>();
 
             // 获取所有规则ID
-            Object ruleIds = redisTemplate.opsForSet().members(RedisKeyGenerator.RULE_LIST_KEY);
+            Object ruleIds = redisTemplate.opsForSet().members(redisKeyGenerator.generateKey(RedisKeyGenerator.RULE_LIST_KEY));
             if (ruleIds != null) {
                 for (Object ruleId : (Set)ruleIds) {
                     RateLimitRule rule = getRule(ruleId.toString());
@@ -106,14 +109,14 @@ public class RedisRateLimitConfigService implements RateLimitConfigService {
     public void deleteRule(String ruleId) {
         try {
             // 删除规则配置
-            String ruleKey = RedisKeyGenerator.generateRuleConfigKey(ruleId);
+            String ruleKey = redisKeyGenerator.generateRuleConfigKey(ruleId);
             redisTemplate.delete(ruleKey);
 
             // 从规则列表中移除
-            redisTemplate.opsForSet().remove(RedisKeyGenerator.RULE_LIST_KEY, ruleId);
+            redisTemplate.opsForSet().remove(redisKeyGenerator.generateKey(RedisKeyGenerator.RULE_LIST_KEY), ruleId);
 
             // 删除相关的统计数据
-            String statsKey = RedisKeyGenerator.generateStatsKey(ruleId);
+            String statsKey = redisKeyGenerator.generateStatsKey(ruleId);
             redisTemplate.delete(statsKey);
 
             // 删除相关的令牌桶数据
@@ -146,7 +149,7 @@ public class RedisRateLimitConfigService implements RateLimitConfigService {
     @Override
     public boolean exists(String ruleId) {
         try {
-            return redisTemplate.opsForSet().isMember(RedisKeyGenerator.RULE_LIST_KEY, ruleId);
+            return redisTemplate.opsForSet().isMember(redisKeyGenerator.generateKey(RedisKeyGenerator.RULE_LIST_KEY), ruleId);
         } catch (Exception e) {
             logger.error("检查限流规则是否存在异常: " + ruleId, e);
             return false;

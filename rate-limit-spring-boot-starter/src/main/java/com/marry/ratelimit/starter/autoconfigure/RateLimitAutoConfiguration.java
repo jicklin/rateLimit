@@ -13,6 +13,7 @@ import com.marry.ratelimit.starter.strategy.RateLimitStrategyFactory;
 import com.marry.ratelimit.starter.strategy.impl.IpRateLimitStrategy;
 import com.marry.ratelimit.starter.strategy.impl.PathRateLimitStrategy;
 import com.marry.ratelimit.starter.strategy.impl.UserRateLimitStrategy;
+import com.marry.ratelimit.starter.util.RedisKeyGenerator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -97,8 +98,9 @@ public class RateLimitAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public RateLimitConfigService rateLimitConfigService(RedisTemplate<String, Object> redisTemplate) {
-        return new RedisRateLimitConfigService(redisTemplate);
+    public RateLimitConfigService rateLimitConfigService(RedisTemplate<String, Object> redisTemplate, RedisKeyGenerator redisKeyGenerator) {
+
+        return new RedisRateLimitConfigService(redisTemplate, redisKeyGenerator);
     }
 
     /**
@@ -109,8 +111,10 @@ public class RateLimitAutoConfiguration {
     public RateLimitStatsService rateLimitStatsService(RedisTemplate<String, Object> redisTemplate,
                                                        RateLimitConfigService configService,
                                                        IpRateLimitStrategy ipStrategy,
-                                                       UserRateLimitStrategy userStrategy) {
-        return new RedisRateLimitStatsService(redisTemplate, configService, ipStrategy, userStrategy);
+                                                       UserRateLimitStrategy userStrategy,
+                                                       RedisKeyGenerator redisKeyGenerator,
+                                                       RateLimitProperties properties) {
+        return new RedisRateLimitStatsService(redisTemplate, configService, ipStrategy, userStrategy, redisKeyGenerator,properties);
     }
 
     /**
@@ -143,4 +147,13 @@ public class RateLimitAutoConfiguration {
                                                                RateLimitInterceptor rateLimitInterceptor) {
         return new RateLimitWebMvcConfigurer(properties, rateLimitInterceptor);
     }
+
+
+    @Bean
+    @ConditionalOnMissingBean
+    public RedisKeyGenerator redisKeyGenerator(RateLimitProperties properties) {
+        return new RedisKeyGenerator(properties.getRedisKeyPrefix());
+    }
+
+
 }

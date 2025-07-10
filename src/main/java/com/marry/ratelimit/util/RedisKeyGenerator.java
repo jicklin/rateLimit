@@ -1,91 +1,101 @@
 package com.marry.ratelimit.util;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 /**
  * Redis键生成工具类
  */
+@Service
 public class RedisKeyGenerator {
-    
+
     /**
      * 限流规则配置键前缀
      */
     public static final String RULE_CONFIG_PREFIX = "rate_limit:config:rule:";
-    
+
     /**
      * 限流规则列表键
      */
     public static final String RULE_LIST_KEY = "rate_limit:config:rules";
-    
+
     /**
      * 限流统计键前缀
      */
     public static final String STATS_PREFIX = "rate_limit:stats:";
-    
+
     /**
      * 令牌桶键前缀
      */
     public static final String BUCKET_PREFIX = "rate_limit:bucket:";
-    
+    /**
+     * Redis键前缀
+     */
+    @Value("${rate-limit.redis-key-prefix:xports}")
+    private String redisKeyPrefix;
+
+
     /**
      * 生成规则配置键
-     * 
+     *
      * @param ruleId 规则ID
      * @return Redis键
      */
-    public static String generateRuleConfigKey(String ruleId) {
-        return RULE_CONFIG_PREFIX + ruleId;
+    public  String generateRuleConfigKey(String ruleId) {
+        return redisKeyPrefix + ":" + RULE_CONFIG_PREFIX + ruleId;
     }
-    
+
     /**
      * 生成统计键
-     * 
+     *
      * @param ruleId 规则ID
      * @return Redis键
      */
-    public static String generateStatsKey(String ruleId) {
-        return STATS_PREFIX + ruleId;
+    public  String generateStatsKey(String ruleId) {
+        return redisKeyPrefix+ ":" + STATS_PREFIX + ruleId;
     }
-    
+
     /**
      * 生成令牌桶键
-     * 
+     *
      * @param ruleId 规则ID
      * @param identifier 标识符（IP、用户ID等）
      * @return Redis键
      */
-    public static String generateBucketKey(String ruleId, String identifier) {
-        return BUCKET_PREFIX + ruleId + ":" + identifier;
+    public  String generateBucketKey(String ruleId, String identifier) {
+        return redisKeyPrefix+ ":" + BUCKET_PREFIX + ruleId + ":" + identifier;
     }
-    
+
     /**
      * 生成令牌桶键（带时间窗口）
-     * 
+     *
      * @param ruleId 规则ID
      * @param identifier 标识符
      * @param timeWindow 时间窗口（秒）
      * @return Redis键
      */
-    public static String generateBucketKeyWithWindow(String ruleId, String identifier, int timeWindow) {
+    public String generateBucketKeyWithWindow(String ruleId, String identifier, int timeWindow) {
         long currentWindow = System.currentTimeMillis() / (timeWindow * 1000L);
-        return BUCKET_PREFIX + ruleId + ":" + identifier + ":" + currentWindow;
+        return redisKeyPrefix+ ":" + BUCKET_PREFIX + ruleId + ":" + identifier + ":" + currentWindow;
     }
-    
+
     /**
      * 生成全局统计键
-     * 
+     *
      * @return Redis键
      */
-    public static String generateGlobalStatsKey() {
-        return "rate_limit:stats:global";
+    public  String generateGlobalStatsKey() {
+        return redisKeyPrefix+ ":stats:global";
     }
-    
+
     /**
      * 生成规则启用状态键
      *
      * @param ruleId 规则ID
      * @return Redis键
      */
-    public static String generateRuleEnabledKey(String ruleId) {
-        return "rate_limit:enabled:" + ruleId;
+    public  String generateRuleEnabledKey(String ruleId) {
+        return redisKeyPrefix + ":enabled:" + ruleId;
     }
 
     /**
@@ -96,8 +106,8 @@ public class RedisKeyGenerator {
      * @param dimensionValue 维度值
      * @return Redis键
      */
-    public static String generateDetailedStatsKey(String ruleId, String dimension, String dimensionValue) {
-        return "rate_limit:detailed_stats:" + ruleId + ":" + dimension + ":" + dimensionValue;
+    public  String generateDetailedStatsKey(String ruleId, String dimension, String dimensionValue) {
+        return redisKeyPrefix+ ":detailed_stats:" + ruleId + ":" + dimension + ":" + dimensionValue;
     }
 
     /**
@@ -107,7 +117,39 @@ public class RedisKeyGenerator {
      * @param dimension 维度（ip、user）
      * @return Redis键
      */
-    public static String generateDimensionListKey(String ruleId, String dimension) {
-        return "rate_limit:dimension_list:" + ruleId + ":" + dimension;
+    public  String generateDimensionListKey(String ruleId, String dimension) {
+        return redisKeyPrefix + "rate_limit:dimension_list:" + ruleId + ":" + dimension;
+    }
+
+    public String getRedisKeyPrefix() {
+        return redisKeyPrefix;
+    }
+
+    public void setRedisKeyPrefix(String redisKeyPrefix) {
+        this.redisKeyPrefix = redisKeyPrefix;
+    }
+
+
+    public String generateKey(String key) {
+        return redisKeyPrefix + ":" + key;
+    }
+
+    public String generateRecordKey(String ruleId, String id) {
+        return redisKeyPrefix + ":" + "rate_limit:records:" + ruleId + ":" + id;
+    }
+
+    public String generateTimeIndexKey(String ruleId) {
+        return redisKeyPrefix + ":" + "rate_limit:time_index:" + ruleId;
+    }
+
+    public String generateGlobalTimeIndexKey() {
+
+
+        return redisKeyPrefix + ":" + "rate_limit:global_time_index";
+    }
+
+    public String generateRealtimeKey(String ruleId, long currentMinute) {
+        return redisKeyPrefix + ":" + "rate_limit:realtime:" + ruleId + ":" + currentMinute;
+
     }
 }

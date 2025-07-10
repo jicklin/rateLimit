@@ -20,27 +20,30 @@ public class RedisRateLimitConfigService implements RateLimitConfigService {
     private static final Logger logger = LoggerFactory.getLogger(RedisRateLimitConfigService.class);
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisKeyGenerator redisKeyGenerator;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public RedisRateLimitConfigService(RedisTemplate<String, Object> redisTemplate) {
+    public RedisRateLimitConfigService(RedisTemplate<String, Object> redisTemplate,RedisKeyGenerator redisKeyGenerator) {
         this.redisTemplate = redisTemplate;
+
+        this.redisKeyGenerator = redisKeyGenerator;
     }
-    
+
     @Override
     public RateLimitRule saveRule(RateLimitRule rule) {
         try {
             if (rule.getId() == null || rule.getId().trim().isEmpty()) {
                 rule.setId(UUID.randomUUID().toString());
             }
-            
+
             rule.setUpdateTime(System.currentTimeMillis());
-            
-            String key = RedisKeyGenerator.generateRuleConfigKey(rule.getId());
+
+            String key = redisKeyGenerator.generateRuleConfigKey(rule.getId());
             String ruleJson = objectMapper.writeValueAsString(rule);
-            
+
             redisTemplate.opsForValue().set(key, ruleJson);
-            redisTemplate.opsForSet().add(RedisKeyGenerator.RULE_LIST_KEY, rule.getId());
-            
+            redisTemplate.opsForSet().add(redisKeyGenerator.generateKey(RedisKeyGenerator.RULE_LIST_KEY), rule.getId());
+
             logger.info("保存限流规则: {} - {}", rule.getId(), rule.getName());
             return rule;
         } catch (Exception e) {
@@ -48,31 +51,31 @@ public class RedisRateLimitConfigService implements RateLimitConfigService {
             throw new RuntimeException("保存限流规则失败", e);
         }
     }
-    
+
     @Override
     public RateLimitRule getRule(String ruleId) {
         try {
-            String key = RedisKeyGenerator.generateRuleConfigKey(ruleId);
+            String key = redisKeyGenerator.generateRuleConfigKey(ruleId);
             Object ruleData = redisTemplate.opsForValue().get(key);
-            
+
             if (ruleData == null) {
                 return null;
             }
-            
+
             return objectMapper.readValue(ruleData.toString(), RateLimitRule.class);
         } catch (Exception e) {
             logger.error("获取限流规则异常: " + ruleId, e);
             return null;
         }
     }
-    
+
     @Override
     public List<RateLimitRule> getAllRules() {
         try {
             List<RateLimitRule> rules = new ArrayList<>();
 
             // 获取所有规则ID
-            Object ruleIds = redisTemplate.opsForSet().members(RedisKeyGenerator.RULE_LIST_KEY);
+            Object ruleIds = redisTemplate.opsForSet().members(redisKeyGenerator.generateKey(RedisKeyGenerator.RULE_LIST_KEY));
             if (ruleIds != null) {
                 for (Object ruleId : (Set)ruleIds) {
                     RateLimitRule rule = getRule(ruleId.toString());
@@ -91,32 +94,32 @@ public class RedisRateLimitConfigService implements RateLimitConfigService {
             return new ArrayList<>();
         }
     }
-    
+
     @Override
     public List<RateLimitRule> getEnabledRules() {
         return getAllRules().stream()
                 .filter(RateLimitRule::isEnabled)
                 .collect(Collectors.toList());
     }
-    
+
     @Override
     public void deleteRule(String ruleId) {
         try {
-            String key = RedisKeyGenerator.generateRuleConfigKey(ruleId);
+            String key = redisKeyGenerator.generateRuleConfigKey(ruleId);
             redisTemplate.delete(key);
-            redisTemplate.opsForSet().remove(RedisKeyGenerator.RULE_LIST_KEY, ruleId);
-            
+            redisTemplate.opsForSet().remove(redisKeyGenerator.generateKey(RedisKeyGenerator.RULE_LIST_KEY), ruleId);
+
             // 删除相关的统计数据
-            String statsKey = RedisKeyGenerator.generateStatsKey(ruleId);
+            String statsKey = redisKeyGenerator.generateStatsKey(ruleId);
             redisTemplate.delete(statsKey);
-            
+
             logger.info("删除限流规则: {}", ruleId);
         } catch (Exception e) {
             logger.error("删除限流规则异常: " + ruleId, e);
             throw new RuntimeException("删除限流规则失败", e);
         }
     }
-    
+
     @Override
     public void toggleRule(String ruleId, boolean enabled) {
         try {
@@ -133,17 +136,17 @@ public class RedisRateLimitConfigService implements RateLimitConfigService {
             throw new RuntimeException("切换限流规则状态失败", e);
         }
     }
-    
+
     @Override
     public boolean exists(String ruleId) {
         try {
-            return redisTemplate.opsForSet().isMember(RedisKeyGenerator.RULE_LIST_KEY, ruleId);
+            return redisTemplate.opsForSet().isMember(redisKeyGenerator.generateKey(RedisKeyGenerator.RULE_LIST_KEY), ruleId);
         } catch (Exception e) {
             logger.error("检查限流规则是否存在异常: " + ruleId, e);
             return false;
         }
     }
-    
+
     @Override
     public void updatePriority(String ruleId, int priority) {
         try {
@@ -152,7 +155,7 @@ public class RedisRateLimitConfigService implements RateLimitConfigService {
                 rule.setPriority(priority);
                 rule.setUpdateTime(System.currentTimeMillis());
                 saveRule(rule);
-                
+
                 logger.info("更新限流规则优先级: {} - {}", ruleId, priority);
             }
         } catch (Exception e) {
