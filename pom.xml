@@ -15,11 +15,6 @@
     </properties>
     <dependencies>
         <!-- 限流starter -->
-        <dependency>
-            <groupId>com.marry</groupId>
-            <artifactId>rate-limit-spring-boot-starter</artifactId>
-            <version>1.0.0</version>
-        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

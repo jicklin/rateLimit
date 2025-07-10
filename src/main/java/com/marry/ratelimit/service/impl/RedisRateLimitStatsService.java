@@ -316,7 +316,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
         try {
             // 按分钟聚合统计数据
             long currentMinute = System.currentTimeMillis() / (60 * 1000) * (60 * 1000);
-            String realtimeKey = "rate_limit:realtime:" + ruleId + ":" + currentMinute;
+            String realtimeKey = redisKeyGenerator.generateRealtimeKey(ruleId, currentMinute);
 
             redisTemplate.opsForHash().increment(realtimeKey, "requests", 1);
             if (allowed) {
@@ -412,17 +412,17 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
             }
 
             // 将记录存储到Redis
-            String recordKey = "rate_limit:records:" + record.getRuleId() + ":" + record.getId();
+            String recordKey = redisKeyGenerator.generateRecordKey(record.getRuleId(), record.getId());
             String recordJson = objectMapper.writeValueAsString(record);
             redisTemplate.opsForValue().set(recordKey, recordJson, 24, TimeUnit.HOURS);
 
             // 添加到时间序列索引（用于按时间查询）
-            String timeIndexKey = "rate_limit:time_index:" + record.getRuleId();
+            String timeIndexKey = redisKeyGenerator.generateTimeIndexKey(record.getRuleId());
             redisTemplate.opsForZSet().add(timeIndexKey, record.getId(), record.getRequestTime());
             redisTemplate.expire(timeIndexKey, 24, TimeUnit.HOURS);
 
             // 添加到全局时间索引
-            String globalTimeIndexKey = "rate_limit:global_time_index";
+            String globalTimeIndexKey = redisKeyGenerator.generateGlobalTimeIndexKey();
             redisTemplate.opsForZSet().add(globalTimeIndexKey, record.getId(), record.getRequestTime());
             redisTemplate.expire(globalTimeIndexKey, 24, TimeUnit.HOURS);
 
@@ -435,12 +435,12 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
     public List<RateLimitRecord> getRateLimitRecords(String ruleId, int limit) {
         List<RateLimitRecord> records = new ArrayList<>();
         try {
-            String timeIndexKey = "rate_limit:time_index:" + ruleId;
+            String timeIndexKey = redisKeyGenerator.generateTimeIndexKey(ruleId);
             Set<Object> recordIds = redisTemplate.opsForZSet().reverseRange(timeIndexKey, 0, limit - 1);
 
             if (recordIds != null) {
                 for (Object recordId : recordIds) {
-                    String recordKey = "rate_limit:records:" + ruleId + ":" + recordId.toString();
+                    String recordKey = redisKeyGenerator.generateRecordKey(ruleId, recordId.toString());
                     String recordJson = (String) redisTemplate.opsForValue().get(recordKey);
                     if (recordJson != null) {
                         RateLimitRecord record = objectMapper.readValue(recordJson, RateLimitRecord.class);
@@ -511,7 +511,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
                     if (intervalMinutes == 1) {
                         // 分钟级别：直接查询对应分钟的数据
                         long timeMinute = timePoint / (60 * 1000) * (60 * 1000);
-                        String realtimeKey = redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:realtime:" + rule.getId() + ":" + timeMinute;
+                        String realtimeKey = redisKeyGenerator.generateRealtimeKey(rule.getId(), timeMinute);
 
                         Map<Object, Object> data = redisTemplate.opsForHash().entries(realtimeKey);
                         if (!data.isEmpty()) {
@@ -523,7 +523,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
                         for (int j = 0; j < intervalMinutes; j++) {
                             long minuteTime = timePoint + (j * 60 * 1000);
                             long timeMinute = minuteTime / (60 * 1000) * (60 * 1000);
-                            String realtimeKey = redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:realtime:" + rule.getId() + ":" + timeMinute;
+                            String realtimeKey = redisKeyGenerator.generateRealtimeKey(rule.getId(), timeMinute);
 
                             Map<Object, Object> data = redisTemplate.opsForHash().entries(realtimeKey);
                             if (!data.isEmpty()) {
@@ -611,7 +611,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
                 if (intervalMinutes == 1) {
                     // 分钟级别：直接查询对应分钟的数据
                     long timeMinute = timePoint / (60 * 1000) * (60 * 1000);
-                    String realtimeKey = redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:realtime:" + ruleId + ":" + timeMinute;
+                    String realtimeKey = redisKeyGenerator.generateRealtimeKey(ruleId, timeMinute);
 
                     Map<Object, Object> data = redisTemplate.opsForHash().entries(realtimeKey);
                     if (!data.isEmpty()) {
@@ -623,7 +623,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
                     for (int j = 0; j < intervalMinutes; j++) {
                         long minuteTime = timePoint + (j * 60 * 1000);
                         long timeMinute = minuteTime / (60 * 1000) * (60 * 1000);
-                        String realtimeKey = redisKeyGenerator.getRedisKeyPrefix()+":"+"rate_limit:realtime:" + ruleId + ":" + timeMinute;
+                        String realtimeKey = redisKeyGenerator.generateRealtimeKey(ruleId, timeMinute);
 
                         Map<Object, Object> data = redisTemplate.opsForHash().entries(realtimeKey);
                         if (!data.isEmpty()) {

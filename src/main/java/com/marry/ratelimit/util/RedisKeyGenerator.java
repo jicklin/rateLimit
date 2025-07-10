@@ -118,7 +118,7 @@ public class RedisKeyGenerator {
      * @return Redis键
      */
     public  String generateDimensionListKey(String ruleId, String dimension) {
-        return redisKeyPrefix + "rate_limit:dimension_list:" + ruleId + ":" + dimension;
+        return redisKeyPrefix + ":" + "rate_limit:dimension_list:" + ruleId + ":" + dimension;
     }
 
     public String getRedisKeyPrefix() {
