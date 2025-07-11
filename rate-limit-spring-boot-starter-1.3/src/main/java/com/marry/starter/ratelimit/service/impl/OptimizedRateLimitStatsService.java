@@ -1,5 +1,6 @@
 package com.marry.starter.ratelimit.service.impl;
 
+import com.marry.starter.ratelimit.autoconfigure.RateLimitProperties;
 import com.marry.starter.ratelimit.model.RateLimitRecord;
 import com.marry.starter.ratelimit.model.RateLimitRule;
 import com.marry.starter.ratelimit.model.RateLimitStats;
@@ -30,23 +31,20 @@ public class OptimizedRateLimitStatsService implements RateLimitStatsService {
     private final IpRateLimitStrategy ipStrategy;
     private final UserRateLimitStrategy userStrategy;
     private final RedisKeyGenerator keyGenerator;
-
-    // 配置参数
-    private static final int MAX_DETAILED_STATS = 10000; // 最大详细统计数量
-    private static final int SAMPLE_RATE = 100; // 采样率：1%
-    private static final int HOTSPOT_TOP_N = 1000; // 热点统计保留Top 1000
-    private static final int AGGREGATION_WINDOW = 5; // 聚合窗口：5分钟
+    private final RateLimitProperties properties;
 
     public OptimizedRateLimitStatsService(RedisTemplate<String, Object> redisTemplate,
                                         RateLimitConfigService configService,
                                         IpRateLimitStrategy ipStrategy,
                                         UserRateLimitStrategy userStrategy,
-                                        RedisKeyGenerator keyGenerator) {
+                                        RedisKeyGenerator keyGenerator,
+                                        RateLimitProperties properties) {
         this.redisTemplate = redisTemplate;
         this.configService = configService;
         this.ipStrategy = ipStrategy;
         this.userStrategy = userStrategy;
         this.keyGenerator = keyGenerator;
+        this.properties = properties;
     }
 
     @Override
@@ -156,9 +154,12 @@ public class OptimizedRateLimitStatsService implements RateLimitStatsService {
      * 使用采样和热点统计
      */
     private void recordSampledAndHotspotStats(String ruleId, String dimension, String dimensionValue, boolean allowed) {
+        // 获取配置中的采样率
+        int sampleRate = properties.getStats().getSampleRate();
+
         // 采样统计：只记录部分请求
-        if (ThreadLocalRandom.current().nextInt(SAMPLE_RATE) == 0) {
-            String sampledKey = keyGenerator.generateSampledStatsKey(ruleId, dimension, SAMPLE_RATE);
+        if (ThreadLocalRandom.current().nextInt(sampleRate) == 0) {
+            String sampledKey = keyGenerator.generateSampledStatsKey(ruleId, dimension, sampleRate);
             redisTemplate.opsForHash().increment(sampledKey, "totalSamples", 1);
             if (allowed) {
                 redisTemplate.opsForHash().increment(sampledKey, "allowedSamples", 1);
@@ -172,8 +173,11 @@ public class OptimizedRateLimitStatsService implements RateLimitStatsService {
         String hotspotKey = keyGenerator.generateHotspotStatsKey(ruleId, dimension);
         redisTemplate.opsForZSet().incrementScore(hotspotKey, dimensionValue, 1);
 
+        // 获取配置中的热点统计保留数量
+        int hotspotTopN = properties.getStats().getHotspotTopN();
+
         // 只保留Top N
-        redisTemplate.opsForZSet().removeRange(hotspotKey, 0, -HOTSPOT_TOP_N - 1);
+        redisTemplate.opsForZSet().removeRange(hotspotKey, 0, -hotspotTopN - 1);
         redisTemplate.expire(hotspotKey, 24 * 60 * 60, java.util.concurrent.TimeUnit.SECONDS);
     }
 
@@ -181,7 +185,10 @@ public class OptimizedRateLimitStatsService implements RateLimitStatsService {
      * 记录聚合统计
      */
     private void recordAggregatedStats(String ruleId, String dimension, boolean allowed) {
-        String aggKey = keyGenerator.generateAggregatedStatsKey(ruleId, dimension, AGGREGATION_WINDOW);
+        // 获取配置中的聚合窗口大小
+        int aggregationWindow = properties.getStats().getAggregationWindowMinutes();
+
+        String aggKey = keyGenerator.generateAggregatedStatsKey(ruleId, dimension, aggregationWindow);
 
         redisTemplate.opsForHash().increment(aggKey, "totalRequests", 1);
         if (allowed) {

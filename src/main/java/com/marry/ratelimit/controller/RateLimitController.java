@@ -103,7 +103,7 @@ public class RateLimitController {
             // 检查是否启用优化模式
             model.addAttribute("optimizedMode", optimizedStatsService != null);
 
-            return "optimized-stats";
+            return "ratelimit/optimized-stats";
         } catch (Exception e) {
             logger.error("加载优化统计页面异常", e);
             model.addAttribute("error", "加载页面失败");

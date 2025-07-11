@@ -1,5 +1,6 @@
 package com.marry.ratelimit.service.impl;
 
+import com.marry.ratelimit.config.OptimizedStatsConfig;
 import com.marry.ratelimit.model.DetailedRateLimitStats;
 import com.marry.ratelimit.model.RateLimitRecord;
 import com.marry.ratelimit.model.RateLimitRule;
@@ -48,6 +49,9 @@ public class OptimizedWebRateLimitStatsService implements RateLimitStatsService 
 
     @Autowired
     private RedisKeyGenerator keyGenerator;
+
+    @Autowired
+    private OptimizedStatsConfig statsConfig;
 
     // Web端不再自己记录统计，委托给starter处理
     // 这些方法保留接口兼容性，但实际不执行记录操作
@@ -436,12 +440,15 @@ public class OptimizedWebRateLimitStatsService implements RateLimitStatsService 
             Map<String, Object> samplingInfo = getSamplingInfo(ruleId);
             result.put("samplingInfo", samplingInfo);
 
-            // 获取热点IP统计（Top 20）
-            Map<String, Object> hotspotIps = getHotspotStats(ruleId, "ip", 20);
+            // 从配置中获取热点统计显示数量（取配置值的1/10作为显示数量）
+            int displayTopN = Math.min(statsConfig.getHotspotTopN() / 10, 50); // 最多显示50个
+
+            // 获取热点IP统计
+            Map<String, Object> hotspotIps = getHotspotStats(ruleId, "ip", displayTopN);
             result.put("hotspotIps", hotspotIps);
 
-            // 获取热点用户统计（Top 20）
-            Map<String, Object> hotspotUsers = getHotspotStats(ruleId, "user", 20);
+            // 获取热点用户统计
+            Map<String, Object> hotspotUsers = getHotspotStats(ruleId, "user", displayTopN);
             result.put("hotspotUsers", hotspotUsers);
 
             // 获取聚合统计（最近30分钟，按5分钟窗口）
@@ -466,8 +473,12 @@ public class OptimizedWebRateLimitStatsService implements RateLimitStatsService 
             // 获取基础统计作为总体参考
             RateLimitStats basicStats = getStats(ruleId);
 
-            samplingInfo.put("sampleRate", "1%");
-            samplingInfo.put("description", "使用1%采样率进行统计，大幅减少Redis键数量");
+            // 从配置中获取采样率
+            int sampleRate = statsConfig.getSampleRate();
+            double samplePercentage = 100.0 / sampleRate;
+
+            samplingInfo.put("sampleRate", samplePercentage + "%");
+            samplingInfo.put("description", "使用" + samplePercentage + "%采样率进行统计，大幅减少Redis键数量");
 
             // 尝试获取IP和用户维度的采样数据
             Map<String, Object> ipSamplingData = getDimensionSamplingData(ruleId, "ip");
@@ -481,8 +492,9 @@ public class OptimizedWebRateLimitStatsService implements RateLimitStatsService 
                 long blockedSamples = (long) ipSamplingData.get("blockedSamples") + (long) userSamplingData.get("blockedSamples");
 
                 // 基于采样数据估算总体
-                long estimatedTotal = totalSamples * 100; // 1%采样，所以乘以100
-                long estimatedBlocked = blockedSamples * 100;
+                int sampleRate = statsConfig.getSampleRate();
+                long estimatedTotal = totalSamples * sampleRate;
+                long estimatedBlocked = blockedSamples * sampleRate;
                 double estimatedBlockRate = totalSamples > 0 ? (double) blockedSamples / totalSamples * 100 : 0.0;
 
                 samplingInfo.put("actualSamples", totalSamples);
@@ -517,8 +529,9 @@ public class OptimizedWebRateLimitStatsService implements RateLimitStatsService 
         Map<String, Object> result = new HashMap<>();
 
         try {
-            // 使用web项目自己的采样统计键名规范
-            String sampledKey = "rate_limit:sampled_stats:" + ruleId + ":" + dimension + ":100";
+            // 使用配置中的采样率构建键名
+            int sampleRate = statsConfig.getSampleRate();
+            String sampledKey = "rate_limit:sampled_stats:" + ruleId + ":" + dimension + ":" + sampleRate;
             Map<Object, Object> sampledData = redisTemplate.opsForHash().entries(sampledKey);
 
             if (!sampledData.isEmpty()) {
@@ -559,8 +572,10 @@ public class OptimizedWebRateLimitStatsService implements RateLimitStatsService 
             List<Map<String, Object>> timeWindows = new ArrayList<>();
 
             long currentTime = System.currentTimeMillis();
-            long windowSize = 5 * 60 * 1000L; // 5分钟窗口
-            int windowCount = minutes / 5;
+            // 从配置中获取聚合窗口大小
+            int aggregationWindow = statsConfig.getAggregationWindowMinutes();
+            long windowSize = aggregationWindow * 60 * 1000L;
+            int windowCount = minutes / aggregationWindow;
 
             for (int i = 0; i < windowCount; i++) {
                 long windowStart = currentTime - (i * windowSize);
@@ -599,9 +614,9 @@ public class OptimizedWebRateLimitStatsService implements RateLimitStatsService 
             }
 
             aggregatedStats.put("timeWindows", timeWindows);
-            aggregatedStats.put("windowSize", "5分钟");
+            aggregatedStats.put("windowSize", aggregationWindow + "分钟");
             aggregatedStats.put("totalWindows", windowCount);
-            aggregatedStats.put("description", "按时间窗口聚合的统计数据");
+            aggregatedStats.put("description", "按" + aggregationWindow + "分钟时间窗口聚合的统计数据");
             aggregatedStats.put("note", "实际聚合数据需要一段时间积累，初期可能显示估算数据");
 
         } catch (Exception e) {

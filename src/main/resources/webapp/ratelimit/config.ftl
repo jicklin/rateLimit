@@ -15,6 +15,8 @@
                 <a href="/ratelimit/" class="nav-link">首页</a>
                 <a href="/ratelimit/config" class="nav-link active">配置管理</a>
                 <a href="/ratelimit/stats" class="nav-link">统计分析</a>
+                <a href="/ratelimit/optimized-stats" class="nav-link">优化统计</a>
+
             </nav>
         </header>
 
