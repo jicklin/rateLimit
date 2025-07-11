@@ -99,26 +99,94 @@ public class RedisKeyGenerator {
     }
 
     /**
+     * 生成详细统计Hash键（优化版本，减少键数量）
+     * 使用Hash结构，一个规则的所有IP/用户统计存储在一个Hash中
+     * 推荐在高并发场景使用此方法
+     *
+     * @param ruleId 规则ID
+     * @param dimension 维度（ip、user）
+     * @return Redis Hash键
+     */
+    public String generateDetailedStatsHashKey(String ruleId, String dimension) {
+        return redisKeyPrefix + ":stats_hash:" + ruleId + ":" + dimension;
+    }
+
+    /**
      * 生成详细统计键（支持IP和用户维度）
+     * @deprecated 在高并发场景建议使用 generateDetailedStatsHashKey 以减少键数量
      *
      * @param ruleId 规则ID
      * @param dimension 维度（ip、user）
      * @param dimensionValue 维度值
      * @return Redis键
      */
-    public  String generateDetailedStatsKey(String ruleId, String dimension, String dimensionValue) {
-        return redisKeyPrefix+ ":detailed_stats:" + ruleId + ":" + dimension + ":" + dimensionValue;
+    @Deprecated
+    public String generateDetailedStatsKey(String ruleId, String dimension, String dimensionValue) {
+        return redisKeyPrefix + ":detailed_stats:" + ruleId + ":" + dimension + ":" + dimensionValue;
+    }
+
+    /**
+     * 生成维度统计Set键（优化版本）
+     * 使用Set结构存储活跃的IP/用户列表，避免大量单独的键
+     *
+     * @param ruleId 规则ID
+     * @param dimension 维度（ip、user）
+     * @return Redis Set键
+     */
+    public String generateDimensionSetKey(String ruleId, String dimension) {
+        return redisKeyPrefix + ":dimension_set:" + ruleId + ":" + dimension;
     }
 
     /**
      * 生成维度统计列表键
+     * @deprecated 建议使用 generateDimensionSetKey
      *
      * @param ruleId 规则ID
      * @param dimension 维度（ip、user）
      * @return Redis键
      */
-    public  String generateDimensionListKey(String ruleId, String dimension) {
-        return redisKeyPrefix + ":" + "rate_limit:dimension_list:" + ruleId + ":" + dimension;
+    @Deprecated
+    public String generateDimensionListKey(String ruleId, String dimension) {
+        return redisKeyPrefix + ":dimension_list:" + ruleId + ":" + dimension;
+    }
+
+    /**
+     * 生成采样统计键（用于大量用户场景）
+     * 当参与人数过多时，可以使用采样统计减少存储开销
+     *
+     * @param ruleId 规则ID
+     * @param dimension 维度
+     * @param sampleRate 采样率（如100表示1%采样）
+     * @return Redis键
+     */
+    public String generateSampledStatsKey(String ruleId, String dimension, int sampleRate) {
+        return redisKeyPrefix + ":sampled_stats:" + ruleId + ":" + dimension + ":" + sampleRate;
+    }
+
+    /**
+     * 生成聚合统计键（按时间窗口聚合）
+     * 用于减少长期存储的统计数据量
+     *
+     * @param ruleId 规则ID
+     * @param dimension 维度
+     * @param timeWindow 时间窗口（分钟）
+     * @return Redis键
+     */
+    public String generateAggregatedStatsKey(String ruleId, String dimension, int timeWindow) {
+        long windowStart = (System.currentTimeMillis() / (timeWindow * 60 * 1000L)) * (timeWindow * 60 * 1000L);
+        return redisKeyPrefix + ":agg_stats:" + ruleId + ":" + dimension + ":" + windowStart;
+    }
+
+    /**
+     * 生成热点统计键（只记录访问频率高的IP/用户）
+     * 使用ZSet结构，按访问次数排序，只保留Top N
+     *
+     * @param ruleId 规则ID
+     * @param dimension 维度
+     * @return Redis ZSet键
+     */
+    public String generateHotspotStatsKey(String ruleId, String dimension) {
+        return redisKeyPrefix + ":hotspot_stats:" + ruleId + ":" + dimension;
     }
 
     public String getRedisKeyPrefix() {

@@ -2,6 +2,7 @@ package com.marry.starter.ratelimit.autoconfigure;
 
 import com.marry.starter.ratelimit.interceptor.RateLimitInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 /**

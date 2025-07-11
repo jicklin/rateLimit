@@ -492,7 +492,6 @@ public class OptimizedWebRateLimitStatsService implements RateLimitStatsService 
                 long blockedSamples = (long) ipSamplingData.get("blockedSamples") + (long) userSamplingData.get("blockedSamples");
 
                 // 基于采样数据估算总体
-                int sampleRate = statsConfig.getSampleRate();
                 long estimatedTotal = totalSamples * sampleRate;
                 long estimatedBlocked = blockedSamples * sampleRate;
                 double estimatedBlockRate = totalSamples > 0 ? (double) blockedSamples / totalSamples * 100 : 0.0;
@@ -531,7 +530,8 @@ public class OptimizedWebRateLimitStatsService implements RateLimitStatsService 
         try {
             // 使用配置中的采样率构建键名
             int sampleRate = statsConfig.getSampleRate();
-            String sampledKey = "rate_limit:sampled_stats:" + ruleId + ":" + dimension + ":" + sampleRate;
+            String sampledKey =  keyGenerator.generateSampledStatsKey(ruleId, dimension, sampleRate);
+//            String sampledKey = "rate_limit:sampled_stats:" + ruleId + ":" + dimension + ":" + sampleRate;
             Map<Object, Object> sampledData = redisTemplate.opsForHash().entries(sampledKey);
 
             if (!sampledData.isEmpty()) {
@@ -634,7 +634,8 @@ public class OptimizedWebRateLimitStatsService implements RateLimitStatsService 
 
         try {
             // 使用web项目自己的聚合统计键名规范
-            String aggKey = "rate_limit:agg_stats:" + ruleId + ":" + dimension + ":" + alignedStart;
+            String aggKey = keyGenerator.generateAggregatedStatsKey(ruleId, dimension, Math.toIntExact(alignedStart));
+//            String aggKey = "rate_limit:agg_stats:" + ruleId + ":" + dimension + ":" + alignedStart;
             Map<Object, Object> aggData = redisTemplate.opsForHash().entries(aggKey);
 
             if (!aggData.isEmpty()) {
@@ -714,8 +715,9 @@ public class OptimizedWebRateLimitStatsService implements RateLimitStatsService 
         Map<String, Object> result = new HashMap<>();
 
         try {
+            String hotspotKey = keyGenerator.generateHotspotStatsKey(ruleId, dimension);
             // 使用web项目自己的热点统计键名规范
-            String hotspotKey = "rate_limit:hotspot_stats:" + ruleId + ":" + dimension;
+//            String hotspotKey = "rate_limit:hotspot_stats:" + ruleId + ":" + dimension;
 
             // 从ZSet中获取Top N（按分数倒序）
             Set<ZSetOperations.TypedTuple<Object>> hotspotData = redisTemplate.opsForZSet().reverseRangeWithScores(hotspotKey, 0, topN - 1);

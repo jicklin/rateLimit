@@ -1,14 +1,14 @@
 package com.marry.starter.ratelimit;
 
-import com.marry.ratelimit.starter.model.HttpMethod;
-import com.marry.ratelimit.starter.model.RateLimitRule;
-import com.marry.ratelimit.starter.util.AntPathMatcher;
-import org.junit.jupiter.api.Test;
+import com.marry.starter.ratelimit.model.HttpMethod;
+import com.marry.starter.ratelimit.model.RateLimitRule;
+import com.marry.starter.ratelimit.util.AntPathMatcher;
+import org.junit.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.util.Arrays;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.Assert.*;
 
 /**
  * 限流Starter测试类

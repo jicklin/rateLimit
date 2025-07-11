@@ -30,7 +30,7 @@ public class RedisKeyGenerator {
     private String redisKeyPrefix = "xports";
 
     public RedisKeyGenerator(String redisKeyPrefix) {
-        if (redisKeyPrefix != null && redisKeyPrefix.trim().isEmpty()) {
+        if (redisKeyPrefix != null && !redisKeyPrefix.trim().isEmpty()) {
             this.redisKeyPrefix = redisKeyPrefix;
         }
     }

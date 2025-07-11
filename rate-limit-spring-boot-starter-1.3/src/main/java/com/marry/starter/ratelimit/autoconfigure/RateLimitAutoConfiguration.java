@@ -12,6 +12,7 @@ import com.marry.starter.ratelimit.interceptor.RateLimitInterceptor;
 import com.marry.starter.ratelimit.service.RateLimitConfigService;
 import com.marry.starter.ratelimit.service.RateLimitService;
 import com.marry.starter.ratelimit.service.RateLimitStatsService;
+import com.marry.starter.ratelimit.service.impl.OptimizedRateLimitStatsService;
 import com.marry.starter.ratelimit.service.impl.RedisRateLimitConfigService;
 import com.marry.starter.ratelimit.service.impl.RedisRateLimitService;
 import com.marry.starter.ratelimit.service.impl.RedisRateLimitStatsService;
@@ -22,9 +23,11 @@ import com.marry.starter.ratelimit.strategy.impl.PathRateLimitStrategy;
 import com.marry.starter.ratelimit.strategy.impl.UserRateLimitStrategy;
 import com.marry.starter.ratelimit.util.SpringBootVersionChecker;
 import com.marry.starter.ratelimit.util.RedisKeyGenerator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,6 +38,9 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 import javax.annotation.PostConstruct;
 import java.util.List;
@@ -67,10 +73,9 @@ public class RateLimitAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean(name = "redisTemplate")
-    @ConditionalOnBean(RedisConnectionFactory.class)
-    public RedisTemplate<String, Object> rateLimitRedisTemplate(RedisConnectionFactory connectionFactory) {
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(connectionFactory);
+        template.setConnectionFactory(redisConnectionFactory);
 
         // 设置键的序列化器
         template.setKeySerializer(new StringRedisSerializer());
@@ -169,23 +174,21 @@ public class RateLimitAutoConfiguration {
         return new RedisRateLimitService(redisTemplate, configService, statsService, strategyFactory);
     }
 
-    /**
+   /* *//**
      * 限流拦截器
      */
     @Bean
-    @ConditionalOnMissingBean
     public RateLimitInterceptor rateLimitInterceptor(RateLimitService rateLimitService) {
         return new RateLimitInterceptor(rateLimitService);
     }
 
-    /**
+   /* *//**
      * Web MVC配置器
      */
     @Bean
     @ConditionalOnMissingBean
-    public RateLimitWebMvcConfigurer rateLimitWebMvcConfigurer(RateLimitProperties properties,
-                                                               RateLimitInterceptor rateLimitInterceptor) {
-        return new RateLimitWebMvcConfigurer(properties, rateLimitInterceptor);
+    public RateLimitWebMvcConfigurer rateLimitWebMvcConfigurer(RateLimitProperties properties,RateLimitInterceptor rateLimitInterceptor) {
+        return new RateLimitWebMvcConfigurer(properties,rateLimitInterceptor);
     }
 
 
@@ -194,6 +197,62 @@ public class RateLimitAutoConfiguration {
     public RedisKeyGenerator redisKeyGenerator(RateLimitProperties properties) {
         return new RedisKeyGenerator(properties.getRedisKeyPrefix());
     }
+
+
+    /**
+     * 优化的统计服务（适用于大量用户场景）
+     * 当启用优化模式时使用此服务
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "rate-limit.stats", name = "optimized", havingValue = "true")
+    @ConditionalOnMissingBean(RateLimitStatsService.class)
+    public RateLimitStatsService optimizedRateLimitStatsService(
+            RedisTemplate<String, Object> redisTemplate,
+            RateLimitConfigService configService,
+            IpRateLimitStrategy ipStrategy,
+            UserRateLimitStrategy userStrategy,
+            RedisKeyGenerator keyGenerator,
+            RateLimitProperties properties) {
+        return new OptimizedRateLimitStatsService(redisTemplate, configService, ipStrategy, userStrategy, keyGenerator, properties);
+    }
+
+    /**
+     * 标准统计服务（默认）
+     * 当未启用优化模式时使用此服务
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "rate-limit.stats", name = "optimized", havingValue = "false", matchIfMissing = true)
+    @ConditionalOnMissingBean(RateLimitStatsService.class)
+    public RateLimitStatsService standardRateLimitStatsService(
+            RedisTemplate<String, Object> redisTemplate,
+            RateLimitConfigService configService,
+            IpRateLimitStrategy ipStrategy,
+            UserRateLimitStrategy userStrategy,
+            RedisKeyGenerator redisKeyGenerator,
+            RateLimitProperties properties) {
+        return new RedisRateLimitStatsService(redisTemplate, configService, ipStrategy, userStrategy, redisKeyGenerator, properties);
+    }
+
+    @Configuration
+    public static class WebConfig extends WebMvcConfigurerAdapter {
+
+        @Autowired
+        private RateLimitInterceptor rateLimitInterceptor;
+
+        @Autowired
+        private  RateLimitProperties properties;
+
+
+        @Override
+        public void addInterceptors(InterceptorRegistry registry) {
+            if (properties.getInterceptor().isEnabled()) {
+                registry.addInterceptor(rateLimitInterceptor)
+                        .addPathPatterns(properties.getInterceptor().getPathPatterns().toArray(new String[0]))
+                        .excludePathPatterns(properties.getInterceptor().getExcludePathPatterns().toArray(new String[0]));
+            }
+        }
+    }
+
 
 
 }

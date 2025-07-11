@@ -19,7 +19,7 @@ public class RateLimitProperties {
     /**
      * Redis键前缀
      */
-    private String redisKeyPrefix = "";
+    private String redisKeyPrefix = "xports";
 
     /**
      * 默认令牌桶容量
