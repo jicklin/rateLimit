@@ -8,7 +8,10 @@ import com.marry.ratelimit.model.RateLimitRecord;
 import com.marry.ratelimit.service.RateLimitConfigService;
 import com.marry.ratelimit.service.RateLimitService;
 import com.marry.ratelimit.service.RateLimitStatsService;
+import com.marry.ratelimit.service.impl.OptimizedWebRateLimitStatsService;
 import com.marry.ratelimit.util.MathUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -27,11 +30,16 @@ import java.util.Map;
 @RequestMapping("/ratelimit")
 public class RateLimitController {
 
+
+    private static final Logger logger = LoggerFactory.getLogger(RateLimitController.class);
     @Autowired
     private RateLimitConfigService configService;
 
     @Autowired
     private RateLimitStatsService statsService;
+
+    @Autowired(required = false)
+    private OptimizedWebRateLimitStatsService optimizedStatsService;
 
     @Autowired
     private RateLimitService rateLimitService;
@@ -81,6 +89,26 @@ public class RateLimitController {
         model.addAttribute("mathUtils", new MathUtils());
 
         return "ratelimit/stats";
+    }
+
+    /**
+     * 优化统计页面
+     */
+    @GetMapping("/optimized-stats")
+    public String optimizedStats(Model model) {
+        try {
+            List<RateLimitRule> rules = configService.getAllRules();
+            model.addAttribute("rules", rules);
+
+            // 检查是否启用优化模式
+            model.addAttribute("optimizedMode", optimizedStatsService != null);
+
+            return "optimized-stats";
+        } catch (Exception e) {
+            logger.error("加载优化统计页面异常", e);
+            model.addAttribute("error", "加载页面失败");
+            return "error";
+        }
     }
 
     /**
@@ -282,12 +310,33 @@ public class RateLimitController {
 
     /**
      * 获取详细统计信息（IP和用户维度）
+     * 支持优化模式和标准模式
      */
     @GetMapping("/api/stats/{ruleId}/detailed")
     @ResponseBody
-    public ResponseEntity<List<DetailedRateLimitStats>> getDetailedStats(@PathVariable String ruleId) {
-        List<DetailedRateLimitStats> detailedStats = statsService.getDetailedStats(ruleId);
-        return ResponseEntity.ok(detailedStats);
+    public ResponseEntity<Map<String, Object>> getDetailedStats(@PathVariable String ruleId) {
+        try {
+            Map<String, Object> result = new HashMap<>();
+
+            if (optimizedStatsService != null) {
+                // 使用优化统计服务
+                Map<String, Object> optimizedStats = optimizedStatsService.getDetailedStatsMap(ruleId);
+                result.put("mode", "optimized");
+                result.put("data", optimizedStats);
+            } else {
+                // 使用标准统计服务
+                List<DetailedRateLimitStats> detailedStats = statsService.getDetailedStats(ruleId);
+                result.put("mode", "standard");
+                result.put("data", detailedStats);
+            }
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            logger.error("获取详细统计异常: " + ruleId, e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "获取统计失败: " + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
     }
 
     /**
@@ -312,6 +361,65 @@ public class RateLimitController {
             @RequestParam(defaultValue = "50") int limit) {
         List<DetailedRateLimitStats> userStats = statsService.getUserStats(ruleId, limit);
         return ResponseEntity.ok(userStats);
+    }
+
+    /**
+     * 获取热点统计（Top访问者）
+     * 仅在优化模式下可用
+     */
+    @GetMapping("/api/stats/{ruleId}/hotspot")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getHotspotStats(
+            @PathVariable String ruleId,
+            @RequestParam(defaultValue = "ip") String dimension,
+            @RequestParam(defaultValue = "20") int topN) {
+        try {
+            if (optimizedStatsService != null) {
+                Map<String, Object> hotspotStats = optimizedStatsService.getHotspotStats(ruleId, dimension, topN);
+                return ResponseEntity.ok(hotspotStats);
+            } else {
+                Map<String, Object> result = new HashMap<>();
+                result.put("error", "热点统计需要启用优化模式");
+                result.put("suggestion", "请在配置中设置 rate-limit.stats.optimized=true");
+                return ResponseEntity.badRequest().body(result);
+            }
+        } catch (Exception e) {
+            logger.error("获取热点统计异常: " + ruleId, e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "获取热点统计失败: " + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
+     * 获取统计模式信息
+     */
+    @GetMapping("/api/stats/mode")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getStatsMode() {
+        Map<String, Object> result = new HashMap<>();
+        result.put("optimized", optimizedStatsService != null);
+        result.put("mode", optimizedStatsService != null ? "优化模式" : "标准模式");
+        result.put("description", optimizedStatsService != null ?
+            "适用于大量用户场景，使用Hash存储、采样统计和热点统计" :
+            "标准统计模式，记录所有详细统计，适用于用户数量较少的场景");
+
+        if (optimizedStatsService != null) {
+            result.put("features", Arrays.asList(
+                "Hash结构存储减少键数量",
+                "采样统计降低存储开销",
+                "热点统计关注高频访问者",
+                "聚合统计支持趋势分析"
+            ));
+        } else {
+            result.put("features", Arrays.asList(
+                "完整的详细统计记录",
+                "精确的IP和用户维度统计",
+                "实时统计数据"
+            ));
+        }
+
+        return ResponseEntity.ok(result);
     }
 
     /**

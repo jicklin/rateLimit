@@ -173,9 +173,10 @@ import com.marry.ratelimit.service.RateLimitConfigService;
 ```
 
 改为：
+
 ```java
-import com.marry.ratelimit.starter.model.RateLimitRule;
-import com.marry.ratelimit.starter.service.RateLimitConfigService;
+
+
 ```
 
 ### 3. 保留的文件

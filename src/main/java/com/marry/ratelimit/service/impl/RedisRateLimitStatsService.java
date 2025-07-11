@@ -13,6 +13,7 @@ import com.marry.ratelimit.util.RedisKeyGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,7 @@ import java.util.concurrent.TimeUnit;
  * 基于Redis的限流统计服务实现
  */
 @Service
+@Primary
 public class RedisRateLimitStatsService implements RateLimitStatsService {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisRateLimitStatsService.class);
