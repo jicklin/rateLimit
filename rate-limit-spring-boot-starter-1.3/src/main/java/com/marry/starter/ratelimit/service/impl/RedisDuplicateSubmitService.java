@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import javax.servlet.http.HttpServletRequest;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.nio.charset.StandardCharsets;
@@ -197,7 +198,7 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
             Object[] args = joinPoint.getArgs();
 
             // 处理方法参数
-            processMethodParameters(params, parameters, args, annotation);
+            processMethodParameters(params, parameters, args, annotation, signature);
 
             // 处理请求参数（只在INCLUDE_ALL和EXCLUDE_ANNOTATED策略下）
             if (annotation.paramStrategy() == PreventDuplicateSubmit.ParamStrategy.INCLUDE_ALL ||
@@ -222,7 +223,7 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
     /**
      * 处理方法参数
      */
-    private void processMethodParameters(Map<String, Object> params, Parameter[] parameters, Object[] args, PreventDuplicateSubmit annotation) {
+    private void processMethodParameters(Map<String, Object> params, Parameter[] parameters, Object[] args, PreventDuplicateSubmit annotation, MethodSignature signature) {
         for (int i = 0; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
             Object arg = args[i];
@@ -232,10 +233,13 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
                 continue;
             }
 
+            // 获取参数注解信息
+            ParameterAnnotationInfo annotationInfo = getParameterAnnotationInfo(signature, i);
+
             // 根据策略处理参数
-            if (shouldIncludeParameter(parameter, annotation)) {
-                String paramName = getParameterName(parameter);
-                Object paramValue = extractParameterValue(parameter, arg);
+            if (shouldIncludeParameterWithInfo(annotationInfo, annotation)) {
+                String paramName = getParameterNameWithInfo(parameter, i, annotationInfo);
+                Object paramValue = extractParameterValueWithInfo(arg, annotationInfo);
                 params.put(paramName, parameterValueExtractor.safeToString(paramValue));
             }
         }
@@ -266,25 +270,29 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
                arg instanceof javax.servlet.http.HttpSession;
     }
 
+
+
+
+
     /**
-     * 判断是否应该包含此参数
+     * 基于注解信息判断是否应该包含此参数
      */
-    private boolean shouldIncludeParameter(Parameter parameter, PreventDuplicateSubmit annotation) {
+    private boolean shouldIncludeParameterWithInfo(ParameterAnnotationInfo annotationInfo, PreventDuplicateSubmit annotation) {
         PreventDuplicateSubmit.ParamStrategy strategy = annotation.paramStrategy();
 
         switch (strategy) {
             case INCLUDE_ALL:
                 // 包含所有参数，除非被@DuplicateSubmitIgnore标注
-                return !parameter.isAnnotationPresent(DuplicateSubmitIgnore.class);
+                return !annotationInfo.hasIgnore();
 
             case INCLUDE_ANNOTATED:
                 // 只包含被@DuplicateSubmitParam(include=true)标注的参数
-                DuplicateSubmitParam paramAnnotation = parameter.getAnnotation(DuplicateSubmitParam.class);
+                DuplicateSubmitParam paramAnnotation = annotationInfo.getParamAnnotation();
                 return paramAnnotation != null && paramAnnotation.include();
 
             case EXCLUDE_ANNOTATED:
                 // 排除被@DuplicateSubmitIgnore标注的参数
-                return !parameter.isAnnotationPresent(DuplicateSubmitIgnore.class);
+                return !annotationInfo.hasIgnore();
 
             case EXCLUDE_ALL:
                 // 不包含任何参数
@@ -296,24 +304,29 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
     }
 
     /**
-     * 获取参数名称
+     * 基于注解信息获取参数名称
      */
-    private String getParameterName(Parameter parameter) {
+    private String getParameterNameWithInfo(Parameter parameter, int paramIndex, ParameterAnnotationInfo annotationInfo) {
         // 优先使用@DuplicateSubmitParam中的alias
-        DuplicateSubmitParam paramAnnotation = parameter.getAnnotation(DuplicateSubmitParam.class);
+        DuplicateSubmitParam paramAnnotation = annotationInfo.getParamAnnotation();
         if (paramAnnotation != null && !paramAnnotation.alias().isEmpty()) {
             return paramAnnotation.alias();
         }
 
-        // 使用参数的实际名称
-        return parameter.getName();
+        // 使用参数的实际名称，如果获取不到则使用索引
+        String paramName = parameter.getName();
+        if (paramName.startsWith("arg")) {
+            // 如果参数名是arg0, arg1这种形式，说明没有保留参数名信息
+            return "param" + paramIndex;
+        }
+        return paramName;
     }
 
     /**
-     * 提取参数值
+     * 基于注解信息提取参数值
      */
-    private Object extractParameterValue(Parameter parameter, Object arg) {
-        DuplicateSubmitParam paramAnnotation = parameter.getAnnotation(DuplicateSubmitParam.class);
+    private Object extractParameterValueWithInfo(Object arg, ParameterAnnotationInfo annotationInfo) {
+        DuplicateSubmitParam paramAnnotation = annotationInfo.getParamAnnotation();
 
         if (paramAnnotation != null && !paramAnnotation.path().isEmpty()) {
             // 使用路径提取值
@@ -415,6 +428,61 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
         } catch (Exception e) {
             logger.error("删除锁异常: key={}, lockValue={}", lockKey, lockValue, e);
             return false;
+        }
+    }
+
+
+
+    /**
+     * 通过方法和参数索引获取参数注解信息
+     */
+    private ParameterAnnotationInfo getParameterAnnotationInfo(MethodSignature signature, int paramIndex) {
+        try {
+            Method method = signature.getMethod();
+            Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+
+            if (paramIndex < parameterAnnotations.length) {
+                Annotation[] annotations = parameterAnnotations[paramIndex];
+
+                DuplicateSubmitParam paramAnnotation = null;
+                boolean hasIgnore = false;
+
+                for (Annotation annotation : annotations) {
+                    if (annotation instanceof DuplicateSubmitParam) {
+                        paramAnnotation = (DuplicateSubmitParam) annotation;
+                    } else if (annotation instanceof DuplicateSubmitIgnore) {
+                        hasIgnore = true;
+                    }
+                }
+
+                return new ParameterAnnotationInfo(paramAnnotation, hasIgnore);
+            }
+
+            return new ParameterAnnotationInfo(null, false);
+        } catch (Exception e) {
+            logger.debug("获取参数注解信息失败: paramIndex={}", paramIndex, e);
+            return new ParameterAnnotationInfo(null, false);
+        }
+    }
+
+    /**
+     * 参数注解信息
+     */
+    private static class ParameterAnnotationInfo {
+        private final DuplicateSubmitParam paramAnnotation;
+        private final boolean hasIgnore;
+
+        public ParameterAnnotationInfo(DuplicateSubmitParam paramAnnotation, boolean hasIgnore) {
+            this.paramAnnotation = paramAnnotation;
+            this.hasIgnore = hasIgnore;
+        }
+
+        public DuplicateSubmitParam getParamAnnotation() {
+            return paramAnnotation;
+        }
+
+        public boolean hasIgnore() {
+            return hasIgnore;
         }
     }
 

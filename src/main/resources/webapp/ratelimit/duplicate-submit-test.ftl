@@ -193,6 +193,14 @@
                 <button class="test-button" onclick="testKeyGenerationOptimization()">Key优化测试</button>
                 <div id="key-optimization-result" class="result-area"></div>
             </div>
+
+            <!-- 参数注解获取修复测试 -->
+            <div class="test-section">
+                <h4>16. 参数注解获取修复测试（5秒防重复）</h4>
+                <p>验证Spring环境下参数注解获取修复，通过方法签名获取注解信息</p>
+                <button class="test-button" onclick="testAnnotationFix()">注解修复测试</button>
+                <div id="annotation-fix-result" class="result-area"></div>
+            </div>
         </main>
     </div>
 
@@ -453,6 +461,33 @@
                 })
                 .catch(function(error) {
                     displayResult('key-optimization-result', error.response?.data || {error: error.message}, 'error');
+                });
+        }
+
+        // 参数注解获取修复测试
+        function testAnnotationFix() {
+            const params = new URLSearchParams({
+                orderNumber: 'ORD' + Date.now(),
+                sessionId: 'SESSION' + Date.now(),
+                normalParam: 'normal_value'
+            });
+
+            const data = {
+                message: "参数注解获取修复测试",
+                user: {
+                    id: "USER123",
+                    name: "Test User",
+                    email: "test@example.com"
+                },
+                testType: "ANNOTATION_FIX"
+            };
+
+            axios.post('/test/duplicate-submit/annotation-fix-test?' + params.toString(), data)
+                .then(function(response) {
+                    displayResult('annotation-fix-result', response.data, 'success');
+                })
+                .catch(function(error) {
+                    displayResult('annotation-fix-result', error.response?.data || {error: error.message}, 'error');
                 });
         }
 

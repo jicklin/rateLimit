@@ -361,6 +361,44 @@ public class DuplicateSubmitTestController {
     }
 
     /**
+     * 参数注解获取修复测试
+     */
+    @PostMapping("/annotation-fix-test")
+    @PreventDuplicateSubmit(
+        interval = 5,
+        paramStrategy = PreventDuplicateSubmit.ParamStrategy.INCLUDE_ANNOTATED,
+        message = "参数注解获取修复测试：5秒防重复"
+    )
+    public Map<String, Object> annotationFixTest(
+            @DuplicateSubmitParam(include = true, alias = "orderId") String orderNumber,
+            @DuplicateSubmitParam(include = true, path = "user.id", alias = "userId") @RequestBody Map<String, Object> userRequest,
+            @DuplicateSubmitIgnore(reason = "会话ID不参与防重复") String sessionId,
+            String normalParam) {
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "参数注解获取修复测试成功");
+        result.put("fix", "通过方法签名获取注解，解决Spring环境下注解获取失败问题");
+        result.put("strategy", "INCLUDE_ANNOTATED - 只包含标注的参数");
+        result.put("includedParams", Map.of(
+            "orderNumber", "alias: orderId",
+            "userRequest.user.id", "alias: userId, path: user.id"
+        ));
+        result.put("excludedParams", Map.of(
+            "sessionId", "被@DuplicateSubmitIgnore标注",
+            "normalParam", "未被@DuplicateSubmitParam标注"
+        ));
+        result.put("data", Map.of(
+            "orderNumber", orderNumber,
+            "userRequest", userRequest,
+            "sessionId", sessionId,
+            "normalParam", normalParam,
+            "processTime", System.currentTimeMillis()
+        ));
+        return result;
+    }
+
+    /**
      * 获取配置信息
      */
     @GetMapping("/config")
@@ -416,6 +454,7 @@ public class DuplicateSubmitTestController {
         endpoints.put("/concurrent-test", "并发测试 - 2秒防重复");
         endpoints.put("/setnx-test", "SETNX原子性测试 - 3秒防重复");
         endpoints.put("/key-generation-optimization", "Key生成优化测试 - 减少重复计算");
+        endpoints.put("/annotation-fix-test", "参数注解获取修复测试 - 解决Spring环境兼容性");
 
         info.put("endpoints", endpoints);
 
@@ -438,6 +477,7 @@ public class DuplicateSubmitTestController {
         features.put("pathExtraction", "支持对象属性路径提取");
         features.put("flexibleStrategy", "多种参数处理策略");
         features.put("keyOptimization", "Key生成优化，减少66.7%重复计算");
+        features.put("annotationFix", "参数注解获取修复，解决Spring环境兼容性问题");
 
         info.put("features", features);
 
