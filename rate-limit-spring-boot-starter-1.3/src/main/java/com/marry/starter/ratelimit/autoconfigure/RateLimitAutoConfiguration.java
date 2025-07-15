@@ -53,7 +53,7 @@ import java.util.List;
 @Configuration
 @ConditionalOnClass({RedisTemplate.class})
 @EnableConfigurationProperties(RateLimitProperties.class)
-@Import(RateLimitStatsConfiguration.class)
+@Import({RateLimitStatsConfiguration.class, DuplicateSubmitAutoConfiguration.class})
 public class RateLimitAutoConfiguration {
 
     private static final Logger logger = LoggerFactory.getLogger(RateLimitAutoConfiguration.class);
@@ -73,6 +73,7 @@ public class RateLimitAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean(name = "redisTemplate")
+    @ConditionalOnBean(RedisConnectionFactory.class)
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(redisConnectionFactory);
@@ -252,6 +253,8 @@ public class RateLimitAutoConfiguration {
             }
         }
     }
+
+    // ==================== 防重复提交相关配置 ====================
 
 
 

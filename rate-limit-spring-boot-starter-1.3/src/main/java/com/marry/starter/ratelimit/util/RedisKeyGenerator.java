@@ -220,4 +220,34 @@ public class RedisKeyGenerator {
         return redisKeyPrefix + ":" + "rate_limit:realtime:" + ruleId + ":" + currentMinute;
 
     }
+
+    /**
+     * 生成防重复提交键
+     *
+     * @param keyPrefix 自定义前缀
+     * @param methodSignature 方法签名
+     * @param userIdentifier 用户标识
+     * @param paramsHash 参数哈希
+     * @return Redis键
+     */
+    public String generateDuplicateSubmitKey(String keyPrefix, String methodSignature, String userIdentifier, String paramsHash) {
+        StringBuilder keyBuilder = new StringBuilder();
+        keyBuilder.append(redisKeyPrefix).append(":duplicate_submit:");
+
+        if (keyPrefix != null && !keyPrefix.isEmpty()) {
+            keyBuilder.append(keyPrefix).append(":");
+        }
+
+        keyBuilder.append(methodSignature);
+
+        if (userIdentifier != null && !userIdentifier.isEmpty()) {
+            keyBuilder.append(":user:").append(userIdentifier);
+        }
+
+        if (paramsHash != null && !paramsHash.isEmpty()) {
+            keyBuilder.append(":params:").append(paramsHash);
+        }
+
+        return keyBuilder.toString();
+    }
 }

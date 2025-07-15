@@ -1,0 +1,100 @@
+# 防重复提交配置示例
+rate-limit:
+  # 基础限流配置
+  enabled: true
+  
+  # 防重复提交配置
+  duplicate-submit:
+    # 是否启用防重复提交功能
+    enabled: true
+    
+    # 默认防重复提交间隔（秒）
+    default-interval: 5
+    
+    # 默认提示信息
+    default-message: "请勿重复提交"
+    
+    # Redis key前缀
+    key-prefix: "duplicate_submit"
+    
+    # 是否启用性能监控
+    enable-metrics: false
+    
+    # 是否启用详细日志
+    enable-detail-log: false
+    
+    # 锁值生成策略：THREAD_TIME_NANO, UUID, THREAD_TIME, CUSTOM
+    lock-value-strategy: THREAD_TIME_NANO
+    
+    # 参数处理配置
+    param:
+      # 最大参数深度（对象属性提取）
+      max-depth: 3
+      
+      # 是否缓存参数哈希
+      cache-hash: true
+      
+      # 参数序列化最大长度
+      max-serialized-length: 1024
+      
+      # 是否忽略null值参数
+      ignore-null-values: true
+    
+    # 用户标识提取配置
+    user:
+      # 用户标识提取顺序
+      extract-order: 
+        - "authorization"
+        - "userId" 
+        - "session"
+        - "ip"
+      
+      # Authorization header名称
+      authorization-header: "Authorization"
+      
+      # 用户ID参数名
+      user-id-param: "userId"
+      
+      # Session中用户信息的key
+      session-user-key: "user"
+      
+      # 是否使用IP作为最后的fallback
+      use-ip-fallback: true
+    
+    # 性能配置
+    performance:
+      # Key生成超时告警阈值（毫秒）
+      key-generation-warn-threshold: 10
+      
+      # Redis操作超时告警阈值（毫秒）
+      redis-operation-warn-threshold: 50
+      
+      # 是否启用Key生成缓存
+      enable-key-cache: false
+      
+      # Key缓存大小
+      key-cache-size: 1000
+      
+      # Key缓存过期时间（秒）
+      key-cache-expire-seconds: 60
+
+# Redis配置
+spring:
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 20
+        max-idle: 10
+        min-idle: 5
+        max-wait: 2000ms
+
+# 日志配置
+logging:
+  level:
+    com.marry.starter.ratelimit.service.impl.RedisDuplicateSubmitService: DEBUG
+    com.marry.starter.ratelimit.aspect.DuplicateSubmitAspect: INFO
+    com.marry.starter.ratelimit.autoconfigure.DuplicateSubmitAutoConfiguration: INFO

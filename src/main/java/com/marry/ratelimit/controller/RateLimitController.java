@@ -112,6 +112,14 @@ public class RateLimitController {
     }
 
     /**
+     * 防重复提交测试页面
+     */
+    @GetMapping("/duplicate-submit-test")
+    public String duplicateSubmitTestPage() {
+        return "ratelimit/duplicate-submit-test";
+    }
+
+    /**
      * 获取所有规则
      */
     @GetMapping("/api/rules")
