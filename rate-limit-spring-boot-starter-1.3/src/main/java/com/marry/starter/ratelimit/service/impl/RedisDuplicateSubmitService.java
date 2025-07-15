@@ -130,14 +130,16 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
             keyBuilder.append(annotation.keyPrefix()).append(":");
         } else {
             keyBuilder.append("duplicate_submit:");
+
+            // 添加方法标识
+            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+            Method method = signature.getMethod();
+            keyBuilder.append(method.getDeclaringClass().getSimpleName())
+                    .append(".")
+                    .append(method.getName());
         }
 
-        // 添加方法标识
-        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-        Method method = signature.getMethod();
-        keyBuilder.append(method.getDeclaringClass().getSimpleName())
-                  .append(".")
-                  .append(method.getName());
+
 
         // 添加用户标识
         if (annotation.includeUser()) {
