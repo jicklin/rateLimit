@@ -125,11 +125,12 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
     public String generateKey(ProceedingJoinPoint joinPoint, HttpServletRequest request, PreventDuplicateSubmit annotation) {
         StringBuilder keyBuilder = new StringBuilder();
 
+        keyBuilder.append("duplicate_submit:");
+
         // 添加前缀
         if (!annotation.keyPrefix().isEmpty()) {
             keyBuilder.append(annotation.keyPrefix()).append(":");
         } else {
-            keyBuilder.append("duplicate_submit:");
 
             // 添加方法标识
             MethodSignature signature = (MethodSignature) joinPoint.getSignature();
