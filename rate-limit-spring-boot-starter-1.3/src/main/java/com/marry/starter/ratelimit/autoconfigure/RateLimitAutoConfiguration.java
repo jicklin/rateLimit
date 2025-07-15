@@ -182,14 +182,14 @@ public class RateLimitAutoConfiguration {
         return new RateLimitInterceptor(rateLimitService);
     }
 
-   /* *//**
+   /* *//**//**
      * Web MVC配置器
-     */
+     *//*
     @Bean
     @ConditionalOnMissingBean
     public RateLimitWebMvcConfigurer rateLimitWebMvcConfigurer(RateLimitProperties properties,RateLimitInterceptor rateLimitInterceptor) {
         return new RateLimitWebMvcConfigurer(properties,rateLimitInterceptor);
-    }
+    }*/
 
 
     @Bean

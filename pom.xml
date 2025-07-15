@@ -14,12 +14,6 @@
         <spring-boot.version>2.6.13</spring-boot.version>
     </properties>
     <dependencies>
-        <!-- 限流starter -->
-        <dependency>
-            <groupId>com.marry.starter</groupId>
-            <artifactId>rate-limit-spring-boot-starter</artifactId>
-            <version>1.3.1-SNAPSHOT</version>
-        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
