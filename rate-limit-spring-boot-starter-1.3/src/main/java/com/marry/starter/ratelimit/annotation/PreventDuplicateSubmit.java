@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * 防重复提交注解
- * 
+ *
  * @author marry
  */
 @Target({ElementType.METHOD})
@@ -42,7 +42,7 @@ public @interface PreventDuplicateSubmit {
      * true: 不同用户的请求不会互相影响
      * false: 所有用户共享防重复提交限制
      */
-    boolean includeUser() default true;
+    boolean includeUser() default false;
 
     /**
      * 自定义key的前缀，默认为空
