@@ -490,12 +490,18 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
             }
 
             // 所有分组都检查通过，组合锁值
+            // 使用特殊分隔符避免与Redis key中的冒号冲突
             StringBuilder lockValueBuilder = new StringBuilder();
             for (GroupLockInfo lockInfo : acquiredLocks) {
                 if (lockValueBuilder.length() > 0) {
                     lockValueBuilder.append("|");
                 }
-                lockValueBuilder.append(lockInfo.getGroupName()).append(":").append(lockInfo.getGroupKey()).append(":").append(lockInfo.getLockValue());
+                // 格式：groupName::groupKey::lockValue（使用双冒号避免冲突）
+                lockValueBuilder.append(lockInfo.getGroupName())
+                    .append("::")
+                    .append(lockInfo.getGroupKey())
+                    .append("::")
+                    .append(lockInfo.getLockValue());
             }
 
             String combinedLockValue = lockValueBuilder.toString();
@@ -662,7 +668,8 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
         boolean allReleased = true;
 
         for (String groupLock : groupLocks) {
-            String[] parts = groupLock.split(":", 3);
+            // 首先尝试新格式：groupName::groupKey::lockValue
+            String[] parts = groupLock.split("::", 3);
             if (parts.length == 3) {
                 String groupName = parts[0];
                 String groupKey = parts[1];
@@ -675,24 +682,7 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
                 } else {
                     logger.debug("分组锁释放成功: group={}, key={}", groupName, groupKey);
                 }
-            } else {
-                // 兼容旧格式：groupName:lockValue
-                if (parts.length == 2) {
-                    String groupName = parts[0];
-                    String groupLockValue = parts[1];
 
-                    // 重新构建分组信息来生成key
-                    ParamGroupInfo group = new ParamGroupInfo(groupName, 0);
-                    String groupKey = generateGroupKey(group, joinPoint, request, annotation);
-
-                    boolean released = releaseLockWithKey(groupKey, groupLockValue);
-                    if (!released) {
-                        allReleased = false;
-                        logger.debug("分组锁释放失败(兼容模式): group={}, key={}", groupName, groupKey);
-                    } else {
-                        logger.debug("分组锁释放成功(兼容模式): group={}, key={}", groupName, groupKey);
-                    }
-                }
             }
         }
 
