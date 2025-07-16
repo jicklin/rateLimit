@@ -706,6 +706,61 @@ public class DuplicateSubmitTestController {
     }
 
     /**
+     * Redis SETNX测试
+     */
+    @PostMapping("/redis-setnx-test")
+    @PreventDuplicateSubmit(
+        interval = 5,
+        paramStrategy = PreventDuplicateSubmit.ParamStrategy.INCLUDE_ALL,
+        message = "Redis SETNX测试：5秒防重复"
+    )
+    public Map<String, Object> redisSetnxTest(String testParam, String userId) {
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "Redis SETNX测试成功");
+        result.put("feature", "使用Redis SET NX PX命令实现原子性防重复提交");
+
+        Map<String, Object> setnxDetails = new HashMap<>();
+        setnxDetails.put("command", "SET key value NX PX milliseconds");
+        setnxDetails.put("description", "原子性地设置key和过期时间，仅当key不存在时");
+        setnxDetails.put("advantages", Map.of(
+            "atomicity", "设置key和过期时间在一个原子操作中完成",
+            "concurrency", "完美处理并发情况，避免竞态条件",
+            "efficiency", "比SETNX+PEXPIRE两步操作更高效",
+            "reliability", "避免SETNX成功但PEXPIRE失败的情况"
+        ));
+
+        Map<String, Object> luaScript = new HashMap<>();
+        luaScript.put("purpose", "原子性检查和设置防重复提交key");
+        luaScript.put("command", "SET key value NX PX ttl");
+        luaScript.put("returnValue", Map.of(
+            "0", "设置成功，不是重复提交",
+            ">0", "key已存在，返回剩余TTL（毫秒）"
+        ));
+        luaScript.put("benefits", Map.of(
+            "atomicity", "整个检查和设置过程是原子性的",
+            "consistency", "避免并发情况下的数据不一致",
+            "performance", "减少网络往返次数"
+        ));
+
+        result.put("setnxDetails", setnxDetails);
+        result.put("luaScript", luaScript);
+        result.put("implementation", Map.of(
+            "step1", "执行Lua脚本：SET key value NX PX ttl",
+            "step2", "如果返回OK，表示设置成功，允许请求",
+            "step3", "如果返回nil，表示key已存在，获取剩余TTL",
+            "step4", "返回剩余时间，拒绝重复请求"
+        ));
+        result.put("data", Map.of(
+            "testParam", testParam,
+            "userId", userId,
+            "processTime", System.currentTimeMillis()
+        ));
+        return result;
+    }
+
+    /**
      * 统一处理架构测试
      */
     @PostMapping("/unified-processing-test")
@@ -935,6 +990,7 @@ public class DuplicateSubmitTestController {
         endpoints.put("/stable-group-test", "稳定分组名称测试 - 解决集合顺序变化问题");
         endpoints.put("/collection-processor-test", "集合处理器测试 - 集合元素独立分组控制");
         endpoints.put("/processor-test", "参数值处理器测试 - 自定义参数值处理");
+        endpoints.put("/redis-setnx-test", "Redis SETNX测试 - 原子性防重复提交");
         endpoints.put("/unified-processing-test", "统一处理架构测试 - 传统方式分组化处理");
         endpoints.put("/annotation-fix-test", "参数注解获取修复测试 - 解决Spring环境兼容性");
 
@@ -973,6 +1029,9 @@ public class DuplicateSubmitTestController {
         features.put("contentBasedNaming", "分组名称和参数名称都基于元素内容而非索引位置");
         features.put("orderIndependent", "集合元素顺序变化完全不影响防重复校验");
         features.put("md5Consistency", "MD5计算结果一致，防重复校验准确可靠");
+        features.put("redisSetnx", "Redis SETNX实现，使用SET NX PX原子性操作");
+        features.put("atomicOperation", "原子性操作，避免并发情况下的竞态条件");
+        features.put("luaScript", "Lua脚本保证检查和设置的原子性");
         features.put("unifiedProcessing", "统一处理架构，传统方式和分组方式使用相同流程");
         features.put("codeSimplification", "代码简化，减少重复逻辑和判断分支");
         features.put("enhancedErrorHandling", "增强错误处理，传统方式也享受分组回滚机制");

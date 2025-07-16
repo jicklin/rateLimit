@@ -46,7 +46,7 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
 
 
     /**
-     * Lua脚本：原子性地检查和设置防重复提交key
+     * Lua脚本：使用SET NX PX原子性地检查和设置防重复提交key
      * 返回值：
      * - 0: 设置成功，不是重复提交
      * - 剩余TTL（毫秒）: 如果是重复提交，返回剩余时间
@@ -55,11 +55,13 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
         "local key = KEYS[1]\n" +
         "local value = ARGV[1]\n" +
         "local ttl = tonumber(ARGV[2])\n" +
-        "local exists = redis.call('EXISTS', key)\n" +
-        "if exists == 0 then\n" +
-        "    redis.call('SET', key, value, 'PX', ttl)\n" +
+        "-- 使用SET NX PX原子性地设置key和过期时间\n" +
+        "local result = redis.call('SET', key, value, 'NX', 'PX', ttl)\n" +
+        "if result then\n" +
+        "    -- 设置成功，不是重复提交\n" +
         "    return 0\n" +
         "else\n" +
+        "    -- key已存在，是重复提交，返回剩余TTL\n" +
         "    local remaining = redis.call('PTTL', key)\n" +
         "    return remaining > 0 and remaining or 1\n" +
         "end";

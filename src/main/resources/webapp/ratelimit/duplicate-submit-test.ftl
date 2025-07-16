@@ -250,9 +250,17 @@
                 <div id="processor-result" class="result-area"></div>
             </div>
 
+            <!-- Redis SETNX测试 -->
+            <div class="test-section">
+                <h4>21. Redis SETNX测试（5秒防重复）</h4>
+                <p>验证Redis SET NX PX原子性操作，避免并发竞态条件</p>
+                <button class="test-button" onclick="testRedisSetnx()">SETNX测试</button>
+                <div id="redis-setnx-result" class="result-area"></div>
+            </div>
+
             <!-- 统一处理架构测试 -->
             <div class="test-section">
-                <h4>21. 统一处理架构测试（4秒防重复）</h4>
+                <h4>22. 统一处理架构测试（4秒防重复）</h4>
                 <p>验证统一处理架构，传统方式也通过分组处理流程</p>
                 <button class="test-button" onclick="testUnifiedProcessing()">统一架构测试</button>
                 <div id="unified-processing-result" class="result-area"></div>
@@ -691,6 +699,27 @@
                 })
                 .catch(function(error) {
                     displayResult('processor-result', error.response?.data || {error: error.message}, 'error');
+                });
+        }
+
+        // Redis SETNX测试
+        function testRedisSetnx() {
+            const params = new URLSearchParams({
+                testParam: 'SetnxTestValue',
+                userId: 'USER' + Date.now()
+            });
+
+            const data = {
+                message: "Redis SETNX测试",
+                testType: "REDIS_SETNX"
+            };
+
+            axios.post('/test/duplicate-submit/redis-setnx-test?' + params.toString(), data)
+                .then(function(response) {
+                    displayResult('redis-setnx-result', response.data, 'success');
+                })
+                .catch(function(error) {
+                    displayResult('redis-setnx-result', error.response?.data || {error: error.message}, 'error');
                 });
         }
 
