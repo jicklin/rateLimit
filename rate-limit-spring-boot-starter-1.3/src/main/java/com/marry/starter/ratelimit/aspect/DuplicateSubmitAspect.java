@@ -43,11 +43,8 @@ public class DuplicateSubmitAspect {
         HttpServletRequest request = attributes.getRequest();
 
         String lockValue = null;
-        String lockKey = null;
 
         try {
-            // 生成锁的key（只生成一次）
-            lockKey = generateLockKey(joinPoint, request, preventDuplicateSubmit);
 
             lockValue = duplicateSubmitService.tryAcquireLock(joinPoint,request, preventDuplicateSubmit);
 
@@ -60,7 +57,7 @@ public class DuplicateSubmitAspect {
                 logger.info("检测到重复提交: method={}, user={}, key={}",
                         joinPoint.getSignature().toShortString(),
                         extractUserInfo(request),
-                        lockKey);
+                        lockValue);
 
                 throw new DuplicateSubmitException(message);
             }
@@ -69,10 +66,9 @@ public class DuplicateSubmitAspect {
             // 执行原方法
             Object result = joinPoint.proceed();
 
-            logger.debug("防重复提交检查通过: method={}, user={}, key={}, lockValue={}",
+            logger.debug("防重复提交检查通过: method={}, user={}, lockValue={}",
                 joinPoint.getSignature().toShortString(),
                 extractUserInfo(request),
-                lockKey,
                 lockValue);
 
             return result;
@@ -86,9 +82,7 @@ public class DuplicateSubmitAspect {
             return joinPoint.proceed();
         } finally {
             // 无论成功还是异常，都要尝试释放锁
-            if (lockValue != null && lockKey != null) {
-                releaseLockWithKey(lockKey, lockValue);
-            }
+            duplicateSubmitService.releaseLock(joinPoint, request, preventDuplicateSubmit, lockValue);
         }
     }
 
