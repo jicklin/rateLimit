@@ -46,7 +46,7 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
 
 
     /**
-     * Lua脚本：使用SET NX PX原子性地检查和设置防重复提交key
+     * Lua脚本：使用SETNX原子性地检查和设置防重复提交key
      * 返回值：
      * - 0: 设置成功，不是重复提交
      * - 剩余TTL（毫秒）: 如果是重复提交，返回剩余时间
@@ -54,14 +54,16 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
     private static final String LUA_SCRIPT_CHECK_AND_SET =
         "local key = KEYS[1]\n" +
         "local value = ARGV[1]\n" +
-        "local ttl = tonumber(ARGV[2])\n" +
-        "-- 使用SET NX PX原子性地设置key和过期时间\n" +
-        "local result = redis.call('SET', key, value, 'NX', 'PX', ttl)\n" +
-        "if result then\n" +
-        "    -- 设置成功，不是重复提交\n" +
+        "local ttlStr = ARGV[2]\n" +
+        "-- 直接使用字符串形式的TTL，让Redis自己转换\n" +
+        "-- 使用SETNX尝试设置key\n" +
+        "local result = redis.call('SETNX', key, value)\n" +
+        "if result == 1 then\n" +
+        "    -- 设置成功，设置过期时间（Redis会自动转换字符串为数字）\n" +
+        "    redis.call('PEXPIRE', key, ttlStr)\n" +
         "    return 0\n" +
         "else\n" +
-        "    -- key已存在，是重复提交，返回剩余TTL\n" +
+        "    -- key已存在，返回剩余TTL\n" +
         "    local remaining = redis.call('PTTL', key)\n" +
         "    return remaining > 0 and remaining or 1\n" +
         "end";
@@ -424,11 +426,12 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
             // 生成唯一的value值
             String lockValue = generateLockValue();
 
+
             // 使用Lua脚本原子性地检查和设置
             Long result = redisTemplate.execute(checkAndSetScript,
                 Collections.singletonList(key),
                 lockValue,
-                String.valueOf(interval));
+                interval);
 
             boolean isDuplicate = result != null && result != 0;
 
@@ -569,11 +572,28 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
             // 生成唯一的value值
             String lockValue = generateLockValue();
 
+            // 确保参数类型正确
+            String intervalStr = String.valueOf(interval);
+
+            logger.debug("执行防重复检查: lockKey={}, lockValue={}, interval={}, intervalType={}",
+                lockKey, lockValue, intervalStr, intervalStr.getClass().getSimpleName());
+
+            // 验证参数
+            if (lockKey == null || lockKey.isEmpty()) {
+                throw new IllegalArgumentException("LockKey cannot be null or empty");
+            }
+            if (lockValue == null || lockValue.isEmpty()) {
+                throw new IllegalArgumentException("LockValue cannot be null or empty");
+            }
+            if (interval <= 0) {
+                throw new IllegalArgumentException("Interval must be positive, got: " + interval);
+            }
+
             // 使用Lua脚本原子性地检查和设置
             Long result = redisTemplate.execute(checkAndSetScript,
                 Collections.singletonList(lockKey),
                 lockValue,
-                String.valueOf(interval));
+                intervalStr);
 
             boolean isDuplicate = result != null && result != 0;
 
@@ -945,6 +965,6 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
      * 生成唯一的锁值
      */
     private String generateLockValue() {
-        return Thread.currentThread().getId() + ":" + System.currentTimeMillis() + ":" + System.nanoTime();
+        return UUID.randomUUID().toString().replace("-", "");
     }
 }

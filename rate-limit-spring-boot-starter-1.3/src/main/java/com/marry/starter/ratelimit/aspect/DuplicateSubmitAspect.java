@@ -6,15 +6,14 @@ import com.marry.starter.ratelimit.service.DuplicateSubmitService;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.annotation.Order;
-import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.servlet.http.HttpServletRequest;
+import java.lang.reflect.Method;
 
 /**
  * 防重复提交切面
@@ -22,14 +21,18 @@ import javax.servlet.http.HttpServletRequest;
  * @author marry
  */
 @Aspect
-@Component
-@Order(1) // 设置较高优先级，在其他切面之前执行
 public class DuplicateSubmitAspect {
 
     private static final Logger logger = LoggerFactory.getLogger(DuplicateSubmitAspect.class);
 
-    @Autowired
-    private DuplicateSubmitService duplicateSubmitService;
+    private final DuplicateSubmitService duplicateSubmitService;
+
+
+    public DuplicateSubmitAspect(DuplicateSubmitService duplicateSubmitService) {
+        this.duplicateSubmitService = duplicateSubmitService;
+        logger.info("DuplicateSubmitAspect 构造函数被调用，Service类型: {}",
+            duplicateSubmitService != null ? duplicateSubmitService.getClass().getName() : "null");
+    }
 
     @Around("@annotation(preventDuplicateSubmit)")
     public Object around(ProceedingJoinPoint joinPoint, PreventDuplicateSubmit preventDuplicateSubmit) throws Throwable {

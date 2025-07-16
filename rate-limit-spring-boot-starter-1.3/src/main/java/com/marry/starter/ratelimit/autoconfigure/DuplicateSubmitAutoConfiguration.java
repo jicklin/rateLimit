@@ -21,7 +21,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 
 /**
  * 防重复提交自动配置类
- * 
+ *
  * @author marry
  */
 @Configuration
@@ -66,8 +66,6 @@ public class DuplicateSubmitAutoConfiguration {
      * 防重复提交服务
      */
     @Bean
-    @ConditionalOnMissingBean(DuplicateSubmitService.class)
-    @ConditionalOnBean(RedisTemplate.class)
     public RedisDuplicateSubmitService duplicateSubmitService() {
         logger.debug("创建Redis防重复提交服务");
         return new RedisDuplicateSubmitService();
@@ -78,11 +76,11 @@ public class DuplicateSubmitAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean(DuplicateSubmitAspect.class)
-    @ConditionalOnBean(DuplicateSubmitService.class)
-    @ConditionalOnClass(name = "org.aspectj.lang.annotation.Aspect")
-    public DuplicateSubmitAspect duplicateSubmitAspect() {
-        logger.debug("创建防重复提交AOP切面");
-        return new DuplicateSubmitAspect();
+    public DuplicateSubmitAspect duplicateSubmitAspect(DuplicateSubmitService duplicateSubmitService) {
+        logger.info("创建防重复提交AOP切面 - DuplicateSubmitAspect");
+        DuplicateSubmitAspect aspect = new DuplicateSubmitAspect(duplicateSubmitService);
+        logger.info("防重复提交切面创建成功: {}", aspect.getClass().getName());
+        return aspect;
     }
 
     /**
@@ -104,7 +102,7 @@ public class DuplicateSubmitAutoConfiguration {
         private final String implementation = "Redis SETNX + Lua Script";
         private final String[] features = {
             "原子性操作",
-            "参数级别控制", 
+            "参数级别控制",
             "对象属性提取",
             "Key生成优化",
             "安全锁管理",
@@ -125,7 +123,7 @@ public class DuplicateSubmitAutoConfiguration {
 
         @Override
         public String toString() {
-            return String.format("DuplicateSubmitConfig{version='%s', implementation='%s', features=%d}", 
+            return String.format("DuplicateSubmitConfig{version='%s', implementation='%s', features=%d}",
                 version, implementation, features.length);
         }
     }
