@@ -40,5 +40,14 @@ public interface DuplicateSubmitService {
     public boolean releaseLockWithKey(String lockKey, String lockValue);
 
 
+    public String tryAcquireLock(ProceedingJoinPoint joinPoint, HttpServletRequest request, PreventDuplicateSubmit annotation);
 
-    }
+
+
+
+
+
+}
+
+
+

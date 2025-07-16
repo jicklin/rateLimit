@@ -49,7 +49,7 @@ public class DuplicateSubmitAspect {
             // 生成锁的key（只生成一次）
             lockKey = generateLockKey(joinPoint, request, preventDuplicateSubmit);
 
-            lockValue = duplicateSubmitService.tryAcquireLockWithKey(lockKey, preventDuplicateSubmit);
+            lockValue = duplicateSubmitService.tryAcquireLock(joinPoint,request, preventDuplicateSubmit);
 
             if (lockValue == null) {
                 // 重复提交

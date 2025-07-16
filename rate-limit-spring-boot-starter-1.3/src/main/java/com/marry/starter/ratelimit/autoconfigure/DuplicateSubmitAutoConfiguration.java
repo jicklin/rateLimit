@@ -2,6 +2,7 @@ package com.marry.starter.ratelimit.autoconfigure;
 
 import com.marry.starter.ratelimit.aspect.DuplicateSubmitAspect;
 import com.marry.starter.ratelimit.config.DuplicateSubmitProperties;
+import com.marry.starter.ratelimit.processor.ParamValueProcessorManager;
 import com.marry.starter.ratelimit.service.DuplicateSubmitService;
 import com.marry.starter.ratelimit.service.impl.RedisDuplicateSubmitService;
 import com.marry.starter.ratelimit.strategy.UserIdentifierExtractor;
@@ -49,6 +50,16 @@ public class DuplicateSubmitAutoConfiguration {
     public ParameterValueExtractor parameterValueExtractor() {
         logger.debug("创建参数值提取器");
         return new ParameterValueExtractor();
+    }
+
+    /**
+     * 参数值处理器管理器
+     */
+    @Bean
+    @ConditionalOnMissingBean(ParamValueProcessorManager.class)
+    public ParamValueProcessorManager paramValueProcessorManager() {
+        logger.debug("创建参数值处理器管理器");
+        return new ParamValueProcessorManager();
     }
 
     /**

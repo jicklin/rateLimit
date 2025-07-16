@@ -50,6 +50,27 @@ public @interface PreventDuplicateSubmit {
     String keyPrefix() default "";
 
     /**
+     * 分组处理策略
+     * ALL_GROUPS: 检查所有分组（默认）
+     * SPECIFIED_GROUPS: 只检查指定的分组
+     * EXCEPT_GROUPS: 检查除指定分组外的所有分组
+     */
+    GroupStrategy groupStrategy() default GroupStrategy.ALL_GROUPS;
+
+    /**
+     * 指定要检查的分组
+     * 只在groupStrategy=SPECIFIED_GROUPS或EXCEPT_GROUPS时有效
+     */
+    String[] groups() default {};
+
+    /**
+     * 是否按分组权重排序
+     * true: 按照分组权重从高到低的顺序检查
+     * false: 按照分组定义的顺序检查
+     */
+    boolean orderByWeight() default true;
+
+    /**
      * 参数处理策略枚举
      */
     enum ParamStrategy {
@@ -72,5 +93,25 @@ public @interface PreventDuplicateSubmit {
          * 不包含任何参数，只基于方法和用户
          */
         EXCLUDE_ALL
+    }
+
+    /**
+     * 分组处理策略枚举
+     */
+    enum GroupStrategy {
+        /**
+         * 检查所有分组
+         */
+        ALL_GROUPS,
+
+        /**
+         * 只检查指定的分组
+         */
+        SPECIFIED_GROUPS,
+
+        /**
+         * 检查除指定分组外的所有分组
+         */
+        EXCEPT_GROUPS
     }
 }

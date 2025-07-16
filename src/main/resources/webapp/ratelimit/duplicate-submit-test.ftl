@@ -194,9 +194,73 @@
                 <div id="key-optimization-result" class="result-area"></div>
             </div>
 
+            <!-- 参数分组测试 -->
+            <div class="test-section">
+                <h4>16. 参数分组测试（8秒防重复）</h4>
+                <p>验证参数分组功能，每个分组独立进行防重复校验</p>
+                <button class="test-button" onclick="testParamGroup()">分组测试</button>
+                <div id="param-group-result" class="result-area"></div>
+            </div>
+
+            <!-- 单个分组测试 -->
+            <div class="test-section">
+                <h4>17. 单个分组测试（5秒防重复）</h4>
+                <p>验证单个分组的锁值格式和释放逻辑</p>
+                <button class="test-button" onclick="testSingleGroup()">单分组测试</button>
+                <div id="single-group-result" class="result-area"></div>
+            </div>
+
+            <!-- 指定分组测试 -->
+            <div class="test-section">
+                <h4>18. 指定分组测试（6秒防重复）</h4>
+                <p>验证指定分组功能，只检查指定的分组</p>
+                <button class="test-button" onclick="testSpecifiedGroup()">指定分组测试</button>
+                <div id="specified-group-result" class="result-area"></div>
+            </div>
+
+            <!-- 稳定参数名称测试 -->
+            <div class="test-section">
+                <h4>19. 稳定参数名称测试（6秒防重复）</h4>
+                <p>验证稳定参数名称功能，完全解决集合顺序变化导致的MD5计算问题</p>
+                <button class="test-button" onclick="testStableParam()">稳定参数测试</button>
+                <div id="stable-param-result" class="result-area"></div>
+            </div>
+
+            <!-- 稳定分组名称测试 -->
+            <div class="test-section">
+                <h4>20. 稳定分组名称测试（7秒防重复）</h4>
+                <p>验证稳定分组名称功能，解决集合顺序变化导致的校验失败问题</p>
+                <button class="test-button" onclick="testStableGroup()">稳定分组测试</button>
+                <div id="stable-group-result" class="result-area"></div>
+            </div>
+
+            <!-- 集合处理器测试 -->
+            <div class="test-section">
+                <h4>20. 集合处理器测试（8秒防重复）</h4>
+                <p>验证集合处理器功能，集合中每个元素作为独立分组控制</p>
+                <button class="test-button" onclick="testCollectionProcessor()">集合处理器测试</button>
+                <div id="collection-processor-result" class="result-area"></div>
+            </div>
+
+            <!-- 参数值处理器测试 -->
+            <div class="test-section">
+                <h4>20. 参数值处理器测试（6秒防重复）</h4>
+                <p>验证参数值处理器功能，支持自定义参数值处理逻辑</p>
+                <button class="test-button" onclick="testProcessor()">处理器测试</button>
+                <div id="processor-result" class="result-area"></div>
+            </div>
+
+            <!-- 统一处理架构测试 -->
+            <div class="test-section">
+                <h4>21. 统一处理架构测试（4秒防重复）</h4>
+                <p>验证统一处理架构，传统方式也通过分组处理流程</p>
+                <button class="test-button" onclick="testUnifiedProcessing()">统一架构测试</button>
+                <div id="unified-processing-result" class="result-area"></div>
+            </div>
+
             <!-- 参数注解获取修复测试 -->
             <div class="test-section">
-                <h4>16. 参数注解获取修复测试（5秒防重复）</h4>
+                <h4>22. 参数注解获取修复测试（5秒防重复）</h4>
                 <p>验证Spring环境下参数注解获取修复，通过方法签名获取注解信息</p>
                 <button class="test-button" onclick="testAnnotationFix()">注解修复测试</button>
                 <div id="annotation-fix-result" class="result-area"></div>
@@ -461,6 +525,193 @@
                 })
                 .catch(function(error) {
                     displayResult('key-optimization-result', error.response?.data || {error: error.message}, 'error');
+                });
+        }
+
+        // 参数分组测试
+        function testParamGroup() {
+            const params = new URLSearchParams({
+                orderNumber: 'ORD' + Date.now(),
+                orderType: 'NORMAL',
+                userCode: 'USER123',
+                paymentMethod: 'CREDIT_CARD',
+                timestamp: Date.now().toString()
+            });
+
+            const data = {
+                message: "参数分组测试",
+                testType: "PARAM_GROUP"
+            };
+
+            axios.post('/test/duplicate-submit/param-group-test?' + params.toString(), data)
+                .then(function(response) {
+                    displayResult('param-group-result', response.data, 'success');
+                })
+                .catch(function(error) {
+                    displayResult('param-group-result', error.response?.data || {error: error.message}, 'error');
+                });
+        }
+
+        // 单个分组测试
+        function testSingleGroup() {
+            const params = new URLSearchParams({
+                orderNumber: 'ORD' + Date.now(),
+                orderType: 'SINGLE_GROUP',
+                timestamp: Date.now().toString()
+            });
+
+            const data = {
+                message: "单个分组测试",
+                testType: "SINGLE_GROUP"
+            };
+
+            axios.post('/test/duplicate-submit/single-group-test?' + params.toString(), data)
+                .then(function(response) {
+                    displayResult('single-group-result', response.data, 'success');
+                })
+                .catch(function(error) {
+                    displayResult('single-group-result', error.response?.data || {error: error.message}, 'error');
+                });
+        }
+
+        // 指定分组测试
+        function testSpecifiedGroup() {
+            const params = new URLSearchParams({
+                orderNumber: 'ORD' + Date.now(),
+                userCode: 'USER123',
+                paymentMethod: 'ALIPAY',
+                shippingAddress: 'Beijing'
+            });
+
+            const data = {
+                message: "指定分组测试",
+                testType: "SPECIFIED_GROUP"
+            };
+
+            axios.post('/test/duplicate-submit/specified-group-test?' + params.toString(), data)
+                .then(function(response) {
+                    displayResult('specified-group-result', response.data, 'success');
+                })
+                .catch(function(error) {
+                    displayResult('specified-group-result', error.response?.data || {error: error.message}, 'error');
+                });
+        }
+
+        // 稳定参数名称测试
+        function testStableParam() {
+            const params = new URLSearchParams({
+                productList: 'PROD001,PROD002,PROD003',
+                orderList: 'ORD001,ORD002,ORD003',
+                timestamp: Date.now().toString()
+            });
+
+            const data = {
+                message: "稳定参数名称测试",
+                testType: "STABLE_PARAM"
+            };
+
+            axios.post('/test/duplicate-submit/stable-param-test?' + params.toString(), data)
+                .then(function(response) {
+                    displayResult('stable-param-result', response.data, 'success');
+                })
+                .catch(function(error) {
+                    displayResult('stable-param-result', error.response?.data || {error: error.message}, 'error');
+                });
+        }
+
+        // 稳定分组名称测试
+        function testStableGroup() {
+            const params = new URLSearchParams({
+                productList: 'PROD001,PROD002,PROD003',
+                orderList: 'ORD001,ORD002,ORD003',
+                timestamp: Date.now().toString()
+            });
+
+            const data = {
+                message: "稳定分组名称测试",
+                testType: "STABLE_GROUP"
+            };
+
+            axios.post('/test/duplicate-submit/stable-group-test?' + params.toString(), data)
+                .then(function(response) {
+                    displayResult('stable-group-result', response.data, 'success');
+                })
+                .catch(function(error) {
+                    displayResult('stable-group-result', error.response?.data || {error: error.message}, 'error');
+                });
+        }
+
+        // 集合处理器测试
+        function testCollectionProcessor() {
+            const params = new URLSearchParams({
+                productList: 'PROD001,PROD002,PROD003',
+                roleList: 'admin,user,guest',
+                tags: 'electronics,mobile,smartphone',
+                timestamp: Date.now().toString()
+            });
+
+            const data = {
+                message: "集合处理器测试",
+                data: {
+                    categories: ['CATEGORY1', 'CATEGORY2'],
+                    tags: ['tag1', 'tag2', 'tag3'],
+                    permissions: ['READ', 'WRITE', 'DELETE']
+                },
+                testType: "COLLECTION_PROCESSOR"
+            };
+
+            axios.post('/test/duplicate-submit/collection-processor-test?' + params.toString(), data)
+                .then(function(response) {
+                    displayResult('collection-processor-result', response.data, 'success');
+                })
+                .catch(function(error) {
+                    displayResult('collection-processor-result', error.response?.data || {error: error.message}, 'error');
+                });
+        }
+
+        // 参数值处理器测试
+        function testProcessor() {
+            const params = new URLSearchParams({
+                defaultParam: 'DefaultValue123',
+                hashParam: 'HashThisValue',
+                sensitiveParam: 'password123456',
+                normalizeParam: '  Mixed Case String  ',
+                orderNumber: 'ORD' + Date.now(),
+                timestamp: Date.now().toString()
+            });
+
+            const data = {
+                message: "参数值处理器测试",
+                testType: "PROCESSOR"
+            };
+
+            axios.post('/test/duplicate-submit/processor-test?' + params.toString(), data)
+                .then(function(response) {
+                    displayResult('processor-result', response.data, 'success');
+                })
+                .catch(function(error) {
+                    displayResult('processor-result', error.response?.data || {error: error.message}, 'error');
+                });
+        }
+
+        // 统一处理架构测试
+        function testUnifiedProcessing() {
+            const params = new URLSearchParams({
+                param1: 'TraditionalParam1',
+                param2: 'TraditionalParam2'
+            });
+
+            const data = {
+                message: "统一处理架构测试",
+                testType: "UNIFIED_PROCESSING"
+            };
+
+            axios.post('/test/duplicate-submit/unified-processing-test?' + params.toString(), data)
+                .then(function(response) {
+                    displayResult('unified-processing-result', response.data, 'success');
+                })
+                .catch(function(error) {
+                    displayResult('unified-processing-result', error.response?.data || {error: error.message}, 'error');
                 });
         }
 
