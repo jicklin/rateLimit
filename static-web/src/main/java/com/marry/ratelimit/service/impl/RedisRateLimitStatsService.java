@@ -500,7 +500,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
 
                 // 格式化时间标签
                 String label = new java.text.SimpleDateFormat("HH:mm")
-                    .format(new java.util.Date(timePoint));
+                    .format(new Date(timePoint));
                 labels.add(label);
 
                 // 聚合这个时间段的数据
@@ -603,7 +603,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
 
                 // 格式化时间标签
                 String label = new java.text.SimpleDateFormat("HH:mm")
-                        .format(new java.util.Date(timePoint));
+                        .format(new Date(timePoint));
                 labels.add(label);
 
                 // 聚合这个时间段的数据

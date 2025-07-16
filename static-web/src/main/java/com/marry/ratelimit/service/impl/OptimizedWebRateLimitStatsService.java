@@ -726,9 +726,9 @@ public class OptimizedWebRateLimitStatsService implements RateLimitStatsService 
 
             if (hotspotData != null) {
                 for (Object item : hotspotData) {
-                    if (item instanceof org.springframework.data.redis.core.DefaultTypedTuple) {
-                        org.springframework.data.redis.core.DefaultTypedTuple tuple =
-                            (org.springframework.data.redis.core.DefaultTypedTuple) item;
+                    if (item instanceof DefaultTypedTuple) {
+                        DefaultTypedTuple tuple =
+                            (DefaultTypedTuple) item;
 
                         Map<String, Object> hotspot = new HashMap<>();
                         hotspot.put("dimensionValue", tuple.getValue());
