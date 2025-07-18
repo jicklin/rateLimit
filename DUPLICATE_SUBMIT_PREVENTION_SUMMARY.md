@@ -9,44 +9,44 @@
 ### 1. 注解定义
 
 **@PreventDuplicateSubmit**
-- 位置：`com.marry.starter.ratelimit.annotation.PreventDuplicateSubmit`
+- 位置：`annotation.io.github.jicklin.starter.ratelimit.PreventDuplicateSubmit`
 - 功能：标记需要防重复提交的方法
 - 参数：时间间隔、时间单位、提示信息、参数配置等
 
 ### 2. 异常类
 
 **DuplicateSubmitException**
-- 位置：`com.marry.starter.ratelimit.exception.DuplicateSubmitException`
+- 位置：`exception.io.github.jicklin.starter.ratelimit.DuplicateSubmitException`
 - 功能：重复提交时抛出的异常
 - 特性：包含剩余等待时间信息
 
 ### 3. 用户标识提取
 
 **UserIdentifierExtractor接口**
-- 位置：`com.marry.starter.ratelimit.strategy.UserIdentifierExtractor`
+- 位置：`strategy.io.github.jicklin.starter.ratelimit.UserIdentifierExtractor`
 - 功能：从请求中提取用户唯一标识
 - 实现：支持多种提取策略，按优先级执行
 
 **DefaultUserIdentifierExtractor**
-- 位置：`com.marry.starter.ratelimit.strategy.impl.DefaultUserIdentifierExtractor`
+- 位置：`impl.strategy.io.github.jicklin.starter.ratelimit.DefaultUserIdentifierExtractor`
 - 功能：默认用户标识提取实现
 - 策略：Authorization header → userId参数 → Session → IP地址
 
 ### 4. 核心服务
 
 **DuplicateSubmitService接口**
-- 位置：`com.marry.starter.ratelimit.service.DuplicateSubmitService`
+- 位置：`service.io.github.jicklin.starter.ratelimit.DuplicateSubmitService`
 - 功能：防重复提交核心服务接口
 
 **RedisDuplicateSubmitService**
-- 位置：`com.marry.starter.ratelimit.service.impl.RedisDuplicateSubmitService`
+- 位置：`impl.service.io.github.jicklin.starter.ratelimit.RedisDuplicateSubmitService`
 - 功能：基于Redis的防重复提交实现
 - 特性：支持参数哈希、用户识别、key生成等
 
 ### 5. AOP切面
 
 **DuplicateSubmitAspect**
-- 位置：`com.marry.starter.ratelimit.aspect.DuplicateSubmitAspect`
+- 位置：`aspect.io.github.jicklin.starter.ratelimit.DuplicateSubmitAspect`
 - 功能：拦截带有@PreventDuplicateSubmit注解的方法
 - 特性：高优先级执行，完整的异常处理
 

@@ -36,7 +36,7 @@ rate-limit:
 创建`OptimizedWebRateLimitStatsService`类：
 
 ```java
-import com.marry.starter.ratelimit.service.RateLimitStatsService;
+import service.io.github.jicklin.starter.ratelimit.RateLimitStatsService;
 
 @Service
 public class OptimizedWebRateLimitStatsService implements RateLimitStatsService {

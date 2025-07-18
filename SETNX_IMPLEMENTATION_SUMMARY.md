@@ -267,8 +267,8 @@ spring:
 ```yaml
 logging:
   level:
-    com.marry.starter.ratelimit.service.impl.RedisDuplicateSubmitService: DEBUG
-    com.marry.starter.ratelimit.aspect.DuplicateSubmitAspect: INFO
+    impl.service.io.github.jicklin.starter.ratelimit.RedisDuplicateSubmitService: DEBUG
+    aspect.io.github.jicklin.starter.ratelimit.DuplicateSubmitAspect: INFO
 ```
 
 ## 最佳实践

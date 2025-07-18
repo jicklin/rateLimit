@@ -392,7 +392,7 @@ String timestamp
 # 启用详细日志
 logging:
   level:
-    com.marry.starter.ratelimit.service.impl.RedisDuplicateSubmitService: DEBUG
+    impl.service.io.github.jicklin.starter.ratelimit.RedisDuplicateSubmitService: DEBUG
 ```
 
 ## 性能影响
