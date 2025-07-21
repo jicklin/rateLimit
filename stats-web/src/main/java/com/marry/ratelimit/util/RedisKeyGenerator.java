@@ -31,7 +31,7 @@ public class RedisKeyGenerator {
     /**
      * Redis键前缀
      */
-    @Value("${rate-limit.redis-key-prefix:xports}")
+    @Value("${rate-limit.redis-key-prefix:default}")
     private String redisKeyPrefix;
 
 

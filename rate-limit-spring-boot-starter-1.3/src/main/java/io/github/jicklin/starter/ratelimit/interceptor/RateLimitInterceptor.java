@@ -56,7 +56,7 @@ public class RateLimitInterceptor extends HandlerInterceptorAdapter {
         response.setCharacterEncoding("UTF-8");
 
         Map<String, Object> result = new HashMap<>();
-        result.put("code", HttpStatus.TOO_MANY_REQUESTS.value());
+        result.put("error", HttpStatus.TOO_MANY_REQUESTS.value());
         result.put("message", "请求过于频繁，请稍后再试");
         result.put("timestamp", System.currentTimeMillis());
         result.put("path", request.getRequestURI());
