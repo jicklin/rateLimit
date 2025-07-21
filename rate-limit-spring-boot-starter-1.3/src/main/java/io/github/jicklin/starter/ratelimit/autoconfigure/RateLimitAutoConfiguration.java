@@ -190,8 +190,7 @@ public class RateLimitAutoConfiguration {
     }*/
 
 
-    @Bean
-    @ConditionalOnMissingBean
+    @Bean(name = "rateLimitRedisKeyGenerator")
     public RedisKeyGenerator redisKeyGenerator(RateLimitProperties properties) {
         return new RedisKeyGenerator(properties.getRedisKeyPrefix());
     }

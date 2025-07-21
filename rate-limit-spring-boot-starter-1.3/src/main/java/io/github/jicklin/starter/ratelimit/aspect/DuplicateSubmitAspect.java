@@ -29,7 +29,7 @@ public class DuplicateSubmitAspect {
 
     public DuplicateSubmitAspect(DuplicateSubmitService duplicateSubmitService) {
         this.duplicateSubmitService = duplicateSubmitService;
-        logger.info("DuplicateSubmitAspect 构造函数被调用，Service类型: {}",
+        logger.debug("DuplicateSubmitAspect 构造函数被调用，Service类型: {}",
             duplicateSubmitService != null ? duplicateSubmitService.getClass().getName() : "null");
     }
 
@@ -56,7 +56,7 @@ public class DuplicateSubmitAspect {
 
                 String message = preventDuplicateSubmit.message();
 
-                logger.info("检测到重复提交: method={}, user={}, key={}",
+                logger.debug("检测到重复提交: method={}, user={}, key={}",
                         joinPoint.getSignature().toShortString(),
                         extractUserInfo(request),
                         lockValue);

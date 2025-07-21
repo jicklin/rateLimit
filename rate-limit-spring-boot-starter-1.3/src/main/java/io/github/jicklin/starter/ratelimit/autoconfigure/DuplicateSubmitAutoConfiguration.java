@@ -76,9 +76,9 @@ public class DuplicateSubmitAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(DuplicateSubmitAspect.class)
     public DuplicateSubmitAspect duplicateSubmitAspect(DuplicateSubmitService duplicateSubmitService) {
-        logger.info("创建防重复提交AOP切面 - DuplicateSubmitAspect");
+        logger.debug("创建防重复提交AOP切面 - DuplicateSubmitAspect");
         DuplicateSubmitAspect aspect = new DuplicateSubmitAspect(duplicateSubmitService);
-        logger.info("防重复提交切面创建成功: {}", aspect.getClass().getName());
+        logger.debug("防重复提交切面创建成功: {}", aspect.getClass().getName());
         return aspect;
     }
 
