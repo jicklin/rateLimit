@@ -39,7 +39,7 @@ public class ParamValueProcessorManager {
         // 注册自定义处理器
         registerCustomProcessors();
 
-        logger.info("参数值处理器管理器初始化完成，共注册{}个处理器: {}",
+        logger.debug("参数值处理器管理器初始化完成，共注册{}个处理器: {}",
             processors.size(), processors.keySet());
     }
 

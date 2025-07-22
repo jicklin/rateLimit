@@ -89,7 +89,7 @@ public class DuplicateSubmitAutoConfiguration {
     @ConditionalOnMissingBean(DuplicateSubmitConfigInfo.class)
     public DuplicateSubmitConfigInfo duplicateSubmitConfigInfo() {
         DuplicateSubmitConfigInfo configInfo = new DuplicateSubmitConfigInfo();
-        logger.info("防重复提交功能已启用: {}", configInfo);
+        logger.debug("防重复提交功能已启用: {}", configInfo);
         return configInfo;
     }
 

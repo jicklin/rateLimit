@@ -1,6 +1,8 @@
 server:
   port: 8089
 spring:
+  profiles:
+    active: 218
   freemarker:
     cache: false
     charset: utf-8
@@ -8,11 +10,7 @@ spring:
     expose-session-attributes: true
     suffix: .ftl
     template-loader-path: classpath:/webapp/
-  redis:
-    host: 192.168.6.249
-    port: 6379
-    password: ZgW@nKWXTwnqeFWFuZ
-    database: 6
 rate-limit:
   stats:
     optimized: true
+

@@ -20,16 +20,16 @@ public class SpringBootVersionChecker {
         try {
             String version = SpringBootVersion.getVersion();
             if (version == null) {
-                logger.warn("无法获取SpringBoot版本信息");
+                logger.debug("无法获取SpringBoot版本信息");
                 return true; // 无法确定版本时默认兼容
             }
 
-            logger.info("当前SpringBoot版本: {}", version);
+            logger.debug("当前SpringBoot版本: {}", version);
 
             // 解析版本号
             String[] parts = version.split("\\.");
             if (parts.length < 2) {
-                logger.warn("SpringBoot版本格式异常: {}", version);
+                logger.debug("SpringBoot版本格式异常: {}", version);
                 return true;
             }
 
@@ -38,13 +38,13 @@ public class SpringBootVersionChecker {
 
             // 支持SpringBoot 1.3+（有限支持）
             if (majorVersion == 1 && minorVersion >= 3) {
-                logger.warn("检测到SpringBoot 1.x版本: {}，功能可能受限，建议升级到2.0+版本", version);
+                logger.debug("检测到SpringBoot 1.x版本: {}，功能可能受限，建议升级到2.0+版本", version);
                 return true; // 有限支持
             }
 
             // 支持SpringBoot 2.0+（完全支持）
             if (majorVersion >= 2) {
-                logger.info("SpringBoot版本完全兼容: {}", version);
+                logger.debug("SpringBoot版本完全兼容: {}", version);
                 return true;
             }
 
