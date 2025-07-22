@@ -135,11 +135,8 @@ public class OptimizedRateLimitStatsService implements RateLimitStatsService {
      */
     private void recordOptimizedStats(String ruleId, String dimension, String dimensionValue, boolean allowed) {
         try {
-            // 直接使用采样和热点统计
-            recordSampledAndHotspotStats(ruleId, dimension, dimensionValue, allowed);
 
-            // 同时记录聚合统计
-            recordAggregatedStats(ruleId, dimension, allowed);
+            recordHotspotStats(ruleId, dimension, dimensionValue, allowed);
 
         } catch (Exception e) {
             logger.error("记录优化统计异常: " + ruleId + ":" + dimension + ":" + dimensionValue, e);
@@ -166,6 +163,24 @@ public class OptimizedRateLimitStatsService implements RateLimitStatsService {
             }
             redisTemplate.expire(sampledKey, 24 * 60 * 60, java.util.concurrent.TimeUnit.SECONDS);
         }
+
+        // 热点统计：记录访问频率高的IP/用户
+        String hotspotKey = keyGenerator.generateHotspotStatsKey(ruleId, dimension);
+        redisTemplate.opsForZSet().incrementScore(hotspotKey, dimensionValue, 1);
+
+        // 获取配置中的热点统计保留数量
+        int hotspotTopN = properties.getStats().getHotspotTopN();
+
+        // 只保留Top N
+        redisTemplate.opsForZSet().removeRange(hotspotKey, 0, -hotspotTopN - 1);
+        redisTemplate.expire(hotspotKey, 24 * 60 * 60, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+
+    /**
+     * 使用采样和热点统计
+     */
+    private void recordHotspotStats(String ruleId, String dimension, String dimensionValue, boolean allowed) {
 
         // 热点统计：记录访问频率高的IP/用户
         String hotspotKey = keyGenerator.generateHotspotStatsKey(ruleId, dimension);
