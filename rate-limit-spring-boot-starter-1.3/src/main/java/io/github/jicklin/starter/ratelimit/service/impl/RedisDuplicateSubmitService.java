@@ -241,9 +241,11 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
      * 处理方法参数
      */
     private void processMethodParameters(Map<String, Object> params, Parameter[] parameters, Object[] args, PreventDuplicateSubmit annotation, MethodSignature signature, HttpServletRequest request, String userIdentifier) {
+        String[] parameterNames = signature.getParameterNames();
         for (int i = 0; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
             Object arg = args[i];
+            String parameterName = parameterNames[i];
 
             // 跳过特殊参数
             if (isSpecialParameter(arg)) {
@@ -255,7 +257,7 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
 
             // 根据策略处理参数
             if (shouldIncludeParameterWithInfo(annotationInfo, annotation)) {
-                String paramName = getParameterNameWithInfo(parameter, i, annotationInfo);
+                String paramName = getParameterNameWithInfo(parameter, i, annotationInfo, parameterName);
 
                 // 创建处理上下文
                 DefaultProcessContext context = new DefaultProcessContext(null, request, i, userIdentifier);
@@ -351,11 +353,14 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
     /**
      * 基于注解信息获取参数名称
      */
-    private String getParameterNameWithInfo(Parameter parameter, int paramIndex, ParameterAnnotationInfo annotationInfo) {
+    private String getParameterNameWithInfo(Parameter parameter, int paramIndex, ParameterAnnotationInfo annotationInfo, String parameterName) {
         // 优先使用@DuplicateSubmitParam中的alias
         DuplicateSubmitParam paramAnnotation = annotationInfo.getParamAnnotation();
         if (paramAnnotation != null && !paramAnnotation.alias().isEmpty()) {
             return paramAnnotation.alias();
+        }
+        if(parameterName!=null && !parameterName.isEmpty()) {
+            return parameterName;
         }
 
         // 使用参数的实际名称，如果获取不到则使用索引
@@ -788,12 +793,14 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
             // 获取方法参数
             MethodSignature signature = (MethodSignature) joinPoint.getSignature();
             Parameter[] parameters = signature.getMethod().getParameters();
+            String[] parameterNames = signature.getParameterNames();
             Object[] args = joinPoint.getArgs();
 
             // 处理方法参数
             for (int i = 0; i < parameters.length; i++) {
                 Parameter parameter = parameters[i];
                 Object arg = args[i];
+                String parameterName = parameterNames[i];
 
                 // 跳过特殊参数
                 if (isSpecialParameter(arg)) {
@@ -805,7 +812,7 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
 
                 // 根据策略处理参数
                 if (shouldIncludeParameterWithInfo(annotationInfo, annotation)) {
-                    String paramName = getParameterNameWithInfo(parameter, i, annotationInfo);
+                    String paramName = getParameterNameWithInfo(parameter, i, annotationInfo, parameterName);
 
                     // 创建处理上下文
                     String userIdentifier = extractUserIdentifier(request);
@@ -923,13 +930,15 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
         // 添加前缀
         if (!annotation.keyPrefix().isEmpty()) {
             keyBuilder.append(annotation.keyPrefix()).append(":");
+        } else {
+            // 添加方法标识
+            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+            keyBuilder.append(signature.getDeclaringTypeName())
+                    .append(".")
+                    .append(signature.getName());
+
         }
 
-        // 添加方法标识
-        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-        keyBuilder.append(signature.getDeclaringTypeName())
-                  .append(".")
-                  .append(signature.getName());
 
         // 添加用户标识
         if (annotation.includeUser()) {
