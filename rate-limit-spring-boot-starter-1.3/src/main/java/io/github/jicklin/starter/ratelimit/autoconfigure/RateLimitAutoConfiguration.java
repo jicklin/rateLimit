@@ -59,10 +59,10 @@ public class RateLimitAutoConfiguration {
     @PostConstruct
     public void checkVersion() {
         String version = SpringBootVersionChecker.getCurrentVersion();
-        logger.info("Rate Limit Starter 初始化，当前SpringBoot版本: {}", version);
+        logger.debug("Rate Limit Starter 初始化，当前SpringBoot版本: {}", version);
 
         if (!SpringBootVersionChecker.isCompatible()) {
-            logger.warn("当前SpringBoot版本 {} 可能与Rate Limit Starter不完全兼容，建议使用SpringBoot 2.0+版本", version);
+            logger.debug("当前SpringBoot版本 {} 可能与Rate Limit Starter不完全兼容，建议使用SpringBoot 2.0+版本", version);
         }
     }
 
