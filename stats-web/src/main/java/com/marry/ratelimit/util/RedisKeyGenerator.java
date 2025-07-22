@@ -172,7 +172,7 @@ public class RedisKeyGenerator {
      * @param timeWindow 时间窗口（分钟）
      * @return Redis键
      */
-    public String generateAggregatedStatsKey(String ruleId, String dimension, int timeWindow) {
+    public String generateAggregatedStatsKey(String ruleId, String dimension, long timeWindow) {
         long windowStart = (System.currentTimeMillis() / (timeWindow * 60 * 1000L)) * (timeWindow * 60 * 1000L);
         return redisKeyPrefix + ":agg_stats:" + ruleId + ":" + dimension + ":" + windowStart;
     }

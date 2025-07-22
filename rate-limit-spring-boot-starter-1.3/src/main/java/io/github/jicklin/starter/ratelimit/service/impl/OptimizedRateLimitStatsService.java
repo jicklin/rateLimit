@@ -112,19 +112,17 @@ public class OptimizedRateLimitStatsService implements RateLimitStatsService {
             }
 
             // 智能选择统计策略
-            if (rule.isEnableIpLimit()) {
-                String ip = ipStrategy.extractIdentifier(request);
-                if (ip != null) {
-                    recordOptimizedStats(ruleId, "ip", ip, allowed);
-                }
+            String ip = ipStrategy.extractIdentifier(request);
+            if (ip != null) {
+                recordOptimizedStats(ruleId, "ip", ip, allowed);
             }
 
-            if (rule.isEnableUserLimit()) {
-                String userId = userStrategy.extractIdentifier(request);
-                if (userId != null) {
-                    recordOptimizedStats(ruleId, "user", userId, allowed);
-                }
+
+            String userId = userStrategy.extractIdentifier(request);
+            if (userId != null) {
+                recordOptimizedStats(ruleId, "user", userId, allowed);
             }
+
 
         } catch (Exception e) {
             logger.error("记录详细统计异常: " + ruleId, e);

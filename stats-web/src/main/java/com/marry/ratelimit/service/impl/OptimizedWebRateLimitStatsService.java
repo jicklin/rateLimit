@@ -634,7 +634,7 @@ public class OptimizedWebRateLimitStatsService implements RateLimitStatsService 
 
         try {
             // 使用web项目自己的聚合统计键名规范
-            String aggKey = keyGenerator.generateAggregatedStatsKey(ruleId, dimension, Math.toIntExact(alignedStart));
+            String aggKey = keyGenerator.generateAggregatedStatsKey(ruleId, dimension, alignedStart);
 //            String aggKey = "rate_limit:agg_stats:" + ruleId + ":" + dimension + ":" + alignedStart;
             Map<Object, Object> aggData = redisTemplate.opsForHash().entries(aggKey);
 

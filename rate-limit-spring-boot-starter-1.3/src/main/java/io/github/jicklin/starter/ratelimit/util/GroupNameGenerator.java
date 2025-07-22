@@ -138,6 +138,11 @@ public class GroupNameGenerator {
             return baseGroupName + "_empty_" + elementIndex;
         }
 
+        // 如果内容很短且只包含安全字符，直接使用
+        if (elementStr.length() <= 30 && isAllSafeChars(elementStr)) {
+            return baseGroupName + "_" + elementStr;
+        }
+
         // 生成基于内容的稳定名称
         String safeContent = generateSafeContent(elementStr);
         String contentHash = generateContentHash(elementStr);
@@ -181,6 +186,10 @@ public class GroupNameGenerator {
         // 如果内容为空，使用特殊标识
         if (elementStr.isEmpty()) {
             return baseParamName + "[empty]";
+        }
+        // 如果内容很短且只包含安全字符，直接使用
+        if (elementStr.length() <= 30 && isAllSafeChars(elementStr)) {
+            return baseParamName + "[" + elementStr + "]";
         }
 
         // 生成安全的内容标识

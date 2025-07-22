@@ -192,7 +192,8 @@ public class RedisRateLimitService implements RateLimitService {
         String userId = userStrategy.extractIdentifier(request);
         if (userId == null) {
             // 如果没有用户ID，使用IP作为fallback
-            return checkIpRateLimit(request, rule);
+//            return checkIpRateLimit(request, rule);
+            return true;
         }
 
         String userKey = userStrategy.generateKey(request, rule);
