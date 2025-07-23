@@ -146,19 +146,6 @@ public class RateLimitAutoConfiguration {
         return new RedisRateLimitConfigService(redisTemplate, redisKeyGenerator);
     }
 
-    /**
-     * 限流统计服务
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    public RateLimitStatsService rateLimitStatsService(RedisTemplate<String, Object> redisTemplate,
-                                                       RateLimitConfigService configService,
-                                                       IpRateLimitStrategy ipStrategy,
-                                                       UserRateLimitStrategy userStrategy,
-                                                       RedisKeyGenerator redisKeyGenerator,
-                                                       RateLimitProperties properties) {
-        return new RedisRateLimitStatsService(redisTemplate, configService, ipStrategy, userStrategy, redisKeyGenerator,properties);
-    }
 
     /**
      * 限流服务
@@ -201,7 +188,6 @@ public class RateLimitAutoConfiguration {
      * 当启用优化模式时使用此服务
      */
     @Bean
-    @ConditionalOnProperty(prefix = "rate-limit.stats", name = "optimized", havingValue = "true")
     @ConditionalOnMissingBean(RateLimitStatsService.class)
     public RateLimitStatsService redisRateLimitStatsService(
             RedisTemplate<String, Object> redisTemplate,
