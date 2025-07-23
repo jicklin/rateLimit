@@ -14,6 +14,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 
 import javax.servlet.http.HttpServletRequest;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 
@@ -31,6 +32,7 @@ public class RedisRateLimitService implements RateLimitService {
 
     /**
      * Lua脚本：令牌桶算法实现
+     * 修复多次填充问题：确保同一时间点不会重复填充令牌
      */
     private static final String TOKEN_BUCKET_SCRIPT =
         "local key = KEYS[1]\n" +
@@ -43,10 +45,17 @@ public class RedisRateLimitService implements RateLimitService {
         "local tokens = tonumber(bucket[1]) or capacity\n" +
         "local last_refill = tonumber(bucket[2]) or now\n" +
         "\n" +
-        "-- 计算需要补充的令牌数\n" +
+        "-- 计算需要补充的令牌数（修复：确保时间间隔计算正确）\n" +
         "local elapsed = math.max(0, now - last_refill)\n" +
-        "local tokens_to_add = math.floor(elapsed / 1000 * refill_rate)\n" +
-        "tokens = math.min(capacity, tokens + tokens_to_add)\n" +
+        "-- refill_rate是每秒补充的令牌数，elapsed是秒数\n" +
+        "local tokens_to_add = math.floor(elapsed * refill_rate)\n" +
+        "\n" +
+        "-- 只有当需要添加令牌时才更新last_refill，避免重复填充\n" +
+        "local new_last_refill = last_refill\n" +
+        "if tokens_to_add > 0 then\n" +
+        "    tokens = math.min(capacity, tokens + tokens_to_add)\n" +
+        "    new_last_refill = now\n" +
+        "end\n" +
         "\n" +
         "local allowed = 0\n" +
         "if tokens > 0 then\n" +
@@ -55,7 +64,7 @@ public class RedisRateLimitService implements RateLimitService {
         "end\n" +
         "\n" +
         "-- 更新令牌桶状态\n" +
-        "redis.call('HMSET', key, 'tokens', tokens, 'last_refill', now)\n" +
+        "redis.call('HMSET', key, 'tokens', tokens, 'last_refill', new_last_refill)\n" +
         "redis.call('EXPIRE', key, time_window * 2)\n" +
         "return {allowed, tokens}";
 
@@ -208,19 +217,32 @@ public class RedisRateLimitService implements RateLimitService {
      */
     private boolean checkTokenBucket(String key, int capacity, int refillRate, int timeWindow) {
         try {
+            long now = Instant.now().getEpochSecond();
+
             List<String> keys = Arrays.asList(key);
-            Object[] args = {capacity, refillRate, timeWindow, System.currentTimeMillis()};
+            Object[] args = {capacity, refillRate, timeWindow, now};
+
+            logger.debug("执行令牌桶检查: key={}, capacity={}, refillRate={}, timeWindow={}, now={}",
+                key, capacity, refillRate, timeWindow, now);
 
             List result = redisTemplate.execute(tokenBucketScript, keys, args);
             if (result != null && result.size() >= 2) {
                 Number allowed = (Number) result.get(0);
-                return allowed.intValue() == 1;
+                Number tokens = (Number) result.get(1);
+                boolean isAllowed = allowed.intValue() == 1;
+
+                logger.debug("令牌桶检查结果: key={}, allowed={}, remainingTokens={}, now={}, timestamp={}",
+                        key, isAllowed, tokens, now, System.currentTimeMillis());
+
+                return isAllowed;
             }
 
+            logger.warn("令牌桶脚本返回结果异常: key={}, result={}", key, result);
             return false;
         } catch (Exception e) {
             logger.error("令牌桶检查异常: " + key, e);
-            return true; // 异常情况下允许通过
+            // 临时修改：异常情况下拒绝请求，用于调试
+            return false; // 异常情况下拒绝通过
         }
     }
 
