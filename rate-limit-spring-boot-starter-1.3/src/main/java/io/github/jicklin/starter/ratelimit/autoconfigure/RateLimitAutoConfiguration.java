@@ -203,32 +203,22 @@ public class RateLimitAutoConfiguration {
     @Bean
     @ConditionalOnProperty(prefix = "rate-limit.stats", name = "optimized", havingValue = "true")
     @ConditionalOnMissingBean(RateLimitStatsService.class)
-    public RateLimitStatsService optimizedRateLimitStatsService(
+    public RateLimitStatsService redisRateLimitStatsService(
             RedisTemplate<String, Object> redisTemplate,
             RateLimitConfigService configService,
             IpRateLimitStrategy ipStrategy,
             UserRateLimitStrategy userStrategy,
             RedisKeyGenerator keyGenerator,
             RateLimitProperties properties) {
-        return new OptimizedRateLimitStatsService(redisTemplate, configService, ipStrategy, userStrategy, keyGenerator, properties);
+        if (properties.getStats().isOptimized()) {
+            return new OptimizedRateLimitStatsService(redisTemplate, configService, ipStrategy, userStrategy, keyGenerator, properties);
+
+        }else {
+            return new RedisRateLimitStatsService(redisTemplate, configService, ipStrategy, userStrategy, keyGenerator, properties);
+
+        }
     }
 
-    /**
-     * 标准统计服务（默认）
-     * 当未启用优化模式时使用此服务
-     */
-    @Bean
-    @ConditionalOnProperty(prefix = "rate-limit.stats", name = "optimized", havingValue = "false", matchIfMissing = true)
-    @ConditionalOnMissingBean(RateLimitStatsService.class)
-    public RateLimitStatsService standardRateLimitStatsService(
-            RedisTemplate<String, Object> redisTemplate,
-            RateLimitConfigService configService,
-            IpRateLimitStrategy ipStrategy,
-            UserRateLimitStrategy userStrategy,
-            RedisKeyGenerator redisKeyGenerator,
-            RateLimitProperties properties) {
-        return new RedisRateLimitStatsService(redisTemplate, configService, ipStrategy, userStrategy, redisKeyGenerator, properties);
-    }
 
     @Configuration
     public static class WebConfig extends WebMvcConfigurerAdapter {

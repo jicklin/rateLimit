@@ -131,7 +131,7 @@ public class RateLimitProperties {
          * 是否启用优化模式（适用于大量用户场景）
          * 当参与人数过多时，启用此模式可以减少Redis键数量
          */
-        private boolean optimized = false;
+        private boolean optimized = true;
 
         /**
          * 统计数据保留时间（小时）
