@@ -647,7 +647,7 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
      * 释放锁，支持分组功能
      */
     public boolean releaseLock(ProceedingJoinPoint joinPoint, HttpServletRequest request, PreventDuplicateSubmit annotation, String lockValue) {
-        if (lockValue == null) {
+        if (lockValue == null || request == null) {
             return false;
         }
 
@@ -717,7 +717,7 @@ public class RedisDuplicateSubmitService implements DuplicateSubmitService {
             if (deleted) {
                 logger.debug("成功删除锁: key={}, lockValue={}", lockKey, lockValue);
             } else {
-                logger.debug("锁已过期或被其他请求删除: key={}, lockValue={}", lockKey, lockValue);
+                logger.warn("锁已过期或被其他请求删除: key={}, lockValue={}", lockKey, lockValue);
             }
 
             return deleted;
