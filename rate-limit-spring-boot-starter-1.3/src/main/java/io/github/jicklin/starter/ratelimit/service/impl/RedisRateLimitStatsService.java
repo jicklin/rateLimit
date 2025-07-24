@@ -3,7 +3,7 @@ package io.github.jicklin.starter.ratelimit.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.jicklin.starter.ratelimit.autoconfigure.RateLimitProperties;
 import io.github.jicklin.starter.ratelimit.model.RateLimitRule;
-import io.github.jicklin.starter.ratelimit.model.RateLimitStats;
+
 import io.github.jicklin.starter.ratelimit.model.RateLimitRecord;
 import io.github.jicklin.starter.ratelimit.service.RateLimitConfigService;
 import io.github.jicklin.starter.ratelimit.service.RateLimitStatsService;
@@ -114,60 +114,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
         }
     }
 
-    @Override
-    public RateLimitStats getStats(String ruleId) {
-        try {
-            String statsKey = redisKeyGenerator.generateStatsKey(ruleId);
-            Map<Object, Object> statsData = redisTemplate.opsForHash().entries(statsKey);
 
-            if (statsData.isEmpty()) {
-                // 如果没有统计数据，创建一个空的统计对象
-                RateLimitRule rule = configService.getRule(ruleId);
-                String ruleName = rule != null ? rule.getName() : "未知规则";
-                return new RateLimitStats(ruleId, ruleName);
-            }
-
-            RateLimitStats stats = new RateLimitStats();
-            stats.setRuleId(ruleId);
-
-            // 获取规则名称
-            RateLimitRule rule = configService.getRule(ruleId);
-            stats.setRuleName(rule != null ? rule.getName() : "未知规则");
-
-            // 设置统计数据
-            stats.setTotalRequests(getLongValue(statsData, "totalRequests"));
-            stats.setAllowedRequests(getLongValue(statsData, "allowedRequests"));
-            stats.setBlockedRequests(getLongValue(statsData, "blockedRequests"));
-            stats.setLastRequestTime(getLongValue(statsData, "lastRequestTime"));
-
-            // 计算请求频率和阻止率
-            stats.calculateRequestRate();
-            stats.calculateBlockRate();
-
-            return stats;
-        } catch (Exception e) {
-            logger.error("获取统计信息异常: " + ruleId, e);
-            return new RateLimitStats(ruleId, "错误");
-        }
-    }
-
-    @Override
-    public List<RateLimitStats> getAllStats() {
-        try {
-            List<RateLimitStats> statsList = new ArrayList<>();
-            List<RateLimitRule> rules = configService.getAllRules();
-
-            for (RateLimitRule rule : rules) {
-                RateLimitStats stats = getStats(rule.getId());
-                statsList.add(stats);
-            }
-
-            return statsList;
-        } catch (Exception e) {
-            logger.error("获取所有统计信息异常", e);
-            return new ArrayList<>();
-        }
-    }
 
     @Override
     public void recordRateLimitDetail(RateLimitRecord record) {
@@ -199,40 +146,7 @@ public class RedisRateLimitStatsService implements RateLimitStatsService {
 
 
 
-    @Override
-    public Map<String, Object> getGlobalStats() {
-        try {
-            Map<String, Object> globalStats = new HashMap<>();
-            List<RateLimitStats> allStats = getAllStats();
 
-            long totalRequests = 0;
-            long totalAllowed = 0;
-            long totalBlocked = 0;
-            int activeRules = 0;
-
-            for (RateLimitStats stats : allStats) {
-                totalRequests += stats.getTotalRequests();
-                totalAllowed += stats.getAllowedRequests();
-                totalBlocked += stats.getBlockedRequests();
-
-                if (stats.getTotalRequests() > 0) {
-                    activeRules++;
-                }
-            }
-
-            globalStats.put("totalRequests", totalRequests);
-            globalStats.put("totalAllowed", totalAllowed);
-            globalStats.put("totalBlocked", totalBlocked);
-            globalStats.put("totalRules", allStats.size());
-            globalStats.put("activeRules", activeRules);
-            globalStats.put("globalBlockRate", totalRequests > 0 ? (double) totalBlocked / totalRequests * 100 : 0.0);
-
-            return globalStats;
-        } catch (Exception e) {
-            logger.error("获取全局统计信息异常", e);
-            return new HashMap<>();
-        }
-    }
 
 
 

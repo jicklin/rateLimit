@@ -3,7 +3,7 @@ package io.github.jicklin.starter.ratelimit.service.impl;
 import io.github.jicklin.starter.ratelimit.autoconfigure.RateLimitProperties;
 import io.github.jicklin.starter.ratelimit.model.RateLimitRecord;
 import io.github.jicklin.starter.ratelimit.model.RateLimitRule;
-import io.github.jicklin.starter.ratelimit.model.RateLimitStats;
+
 import io.github.jicklin.starter.ratelimit.service.RateLimitConfigService;
 import io.github.jicklin.starter.ratelimit.service.RateLimitStatsService;
 import io.github.jicklin.starter.ratelimit.strategy.impl.IpRateLimitStrategy;
@@ -106,10 +106,10 @@ public class OptimizedRateLimitStatsService implements RateLimitStatsService {
         recordRequest(ruleId, allowed);
 
         try {
-            RateLimitRule rule = configService.getRule(ruleId);
+           /* RateLimitRule rule = configService.getRule(ruleId);
             if (rule == null) {
                 return;
-            }
+            }*/
 
             // 智能选择统计策略
             String ip = ipStrategy.extractIdentifier(request);
@@ -214,88 +214,11 @@ public class OptimizedRateLimitStatsService implements RateLimitStatsService {
         redisTemplate.expire(aggKey, 2 * 60 * 60, java.util.concurrent.TimeUnit.SECONDS);
     }
 
-    @Override
-    public RateLimitStats getStats(String ruleId) {
-        try {
-            String key = keyGenerator.generateStatsKey(ruleId);
-            Map<Object, Object> statsData = redisTemplate.opsForHash().entries(key);
-
-            RateLimitRule rule = configService.getRule(ruleId);
-            String ruleName = rule != null ? rule.getName() : "未知规则";
-
-            RateLimitStats stats = new RateLimitStats(ruleId, ruleName);
-
-            if (!statsData.isEmpty()) {
-                stats.setTotalRequests(getLongValue(statsData.get("totalRequests")));
-                stats.setAllowedRequests(getLongValue(statsData.get("allowedRequests")));
-                stats.setBlockedRequests(getLongValue(statsData.get("blockedRequests")));
-                stats.setLastRequestTime(getLongValue(statsData.get("lastRequestTime")));
-
-                stats.calculateRequestRate();
-                stats.calculateBlockRate();
-            }
-
-            return stats;
-        } catch (Exception e) {
-            logger.error("获取统计信息异常: " + ruleId, e);
-            return new RateLimitStats(ruleId, "未知规则");
-        }
-    }
-
-    @Override
-    public List<RateLimitStats> getAllStats() {
-        try {
-            List<RateLimitStats> statsList = new ArrayList<>();
-            List<RateLimitRule> rules = configService.getAllRules();
-
-            for (RateLimitRule rule : rules) {
-                RateLimitStats stats = getStats(rule.getId());
-                statsList.add(stats);
-            }
-
-            return statsList;
-        } catch (Exception e) {
-            logger.error("获取所有统计信息异常", e);
-            return new ArrayList<>();
-        }
-    }
 
 
 
-    @Override
-    public Map<String, Object> getGlobalStats() {
-        try {
-            Map<String, Object> globalStats = new HashMap<>();
-            List<RateLimitStats> allStats = getAllStats();
 
-            long totalRequests = 0;
-            long totalAllowed = 0;
-            long totalBlocked = 0;
-            int activeRules = 0;
 
-            for (RateLimitStats stats : allStats) {
-                totalRequests += stats.getTotalRequests();
-                totalAllowed += stats.getAllowedRequests();
-                totalBlocked += stats.getBlockedRequests();
-
-                if (stats.getTotalRequests() > 0) {
-                    activeRules++;
-                }
-            }
-
-            globalStats.put("totalRequests", totalRequests);
-            globalStats.put("totalAllowed", totalAllowed);
-            globalStats.put("totalBlocked", totalBlocked);
-            globalStats.put("totalRules", allStats.size());
-            globalStats.put("activeRules", activeRules);
-            globalStats.put("blockRate", totalRequests > 0 ? (double) totalBlocked / totalRequests * 100 : 0.0);
-
-            return globalStats;
-        } catch (Exception e) {
-            logger.error("获取全局统计信息异常", e);
-            return new HashMap<>();
-        }
-    }
 
     @Override
     public void recordRateLimitDetail(RateLimitRecord record) {

@@ -1,14 +1,14 @@
 package io.github.jicklin.starter.ratelimit.service;
 
 import io.github.jicklin.starter.ratelimit.model.RateLimitRecord;
-import io.github.jicklin.starter.ratelimit.model.RateLimitStats;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 限流统计服务接口
+ *
+ * 注意：此接口只负责记录统计数据，不提供查询功能
+ * 查询功能应该由使用方（如管理后台）自行实现
  */
 public interface RateLimitStatsService {
 
@@ -30,30 +30,11 @@ public interface RateLimitStatsService {
     void recordRequest(HttpServletRequest request, String ruleId, boolean allowed);
 
     /**
-     * 获取规则统计信息
+     * 记录限流详细记录
      *
-     * @param ruleId 规则ID
-     * @return 统计信息
+     * @param record 限流记录
      */
-    RateLimitStats getStats(String ruleId);
-
-    /**
-     * 获取所有规则的统计信息
-     *
-     * @return 统计信息列表
-     */
-    List<RateLimitStats> getAllStats();
-
-
-    /**
-     * 获取全局统计信息
-     *
-     * @return 全局统计信息
-     */
-    Map<String, Object> getGlobalStats();
-
-
-    public void recordRateLimitDetail(RateLimitRecord record);
+    void recordRateLimitDetail(RateLimitRecord record);
 }
 
 
