@@ -125,6 +125,7 @@ public class RedisRateLimitConfigService implements RateLimitConfigService {
 
             // 更新启用规则缓存
             enabledRulesCache = enabledRules;
+            lastCacheUpdateTime = System.currentTimeMillis();
 
             return new ArrayList<>(enabledRules);
         } finally {
